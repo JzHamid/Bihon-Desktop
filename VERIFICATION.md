@@ -1,3 +1,15 @@
+# Verification: Bihon 0.2.0
+
+Built on Windows 11, 2026-09-07.
+
+- All 17 unit tests passed, including default-repository retry/idempotency and upgrade snapshot/recovery checks.
+- Production WebUI build and TypeScript checks passed after the final extension-cache correction.
+- Development executable integration checks passed for legacy library/progress preservation, verified upgrade snapshots, repository removal persistence, Ctrl+wheel artwork zoom, synthetic trackpad pinch, drag panning, reset, menu zoom, and webtoon zoom.
+- Fresh offline startup displayed the automatic repository setup message. Reconnection registered the repository, but exposed an upstream cached empty extension list. The final build explicitly clears that cache before refreshing.
+- Further integration testing was stopped at the user's request. The final reconnection correction and final 0.2.0 installer have not been retested. A packaged upgrade attempt stopped before automatic repository retry completed; the development upgrade checks passed.
+- Updates are manual: close Bihon and run the newer installer over the existing installation. The application snapshots existing library data before starting a newer version; chapter downloads remain separate.
+
+The following is historical 0.1.0 evidence, not a new test run of 0.2.0.
 # Verification: Bihon 0.1.0
 
 Verified on Windows 11 (build 26200), 2026-09-07. This is an unsigned first personal release, not a claim of complete Mihon compatibility.

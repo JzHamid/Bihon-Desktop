@@ -3,11 +3,36 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const { Server, freePort } = require('./server.cjs');
 const { readJson, writeJson, migrate, inside } = require('./storage.cjs');
+const { configureDefaultRepository } = require('./defaults.cjs');
+const { prepareUpgrade, markVersionStarted } = require('./upgrades.cjs');
 
 const stateDir = process.env.BIHON_DATA_DIR || path.join(process.env.LOCALAPPDATA, 'Bihon');
 app.setPath('userData', path.join(stateDir, 'desktop'));
 app.setName('Bihon');
-let window, server, settings, busy = false, quitting = false;
+let window, server, settings, defaultRetry, busy = false, quitting = false;
+const version = app.getVersion();
+function changeZoom(action) {
+  if (!window || window.isDestroyed()) return;
+  const url = new URL(window.webContents.getURL());
+  if (/^\/manga\/\d+\/chapter\/\d+(?:\/|$)/.test(url.pathname)) {
+    window.webContents.send('bihon:reader-zoom', action);
+  } else {
+    const current = window.webContents.getZoomLevel();
+    window.webContents.setZoomLevel(action === 'reset' ? 0 : Math.max(-3, Math.min(5, current + (action === 'in' ? 0.5 : -0.5))));
+  }
+}
+async function setupExtensions() {
+  clearTimeout(defaultRetry);
+  if (quitting) return;
+  if (!server?.child) { defaultRetry = setTimeout(setupExtensions, 30000); return; }
+  try {
+    await configureDefaultRepository({ stateDir, url: server.url });
+    if (window && !window.isDestroyed()) window.webContents.send('bihon:extensions-ready');
+  } catch (error) {
+    console.warn('Default extension repository will retry:', error.message);
+    if (!quitting) defaultRetry = setTimeout(setupExtensions, 30000);
+  }
+}
 const settingsFile = path.join(stateDir, 'desktop-settings.json');
 const root = path.resolve(__dirname, '..');
 const runtime = app.isPackaged ? path.join(process.resourcesPath, 'runtime') : path.join(root, 'runtime/Suwayomi-Server-v2.3.2243-windows-x64');
@@ -54,6 +79,7 @@ async function boot() {
   }
   window = new BrowserWindow({ width: 1360, height: 900, minWidth: 900, minHeight: 600, title: 'Bihon', backgroundColor: '#11131a', show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  window.webContents.on('zoom-changed', (_event, direction) => changeZoom(direction));
   window.once('ready-to-show', () => window.show());
   window.on('close', event => { if (busy) event.preventDefault(); });
   await window.loadFile(path.join(__dirname, 'starting.html'));
@@ -74,10 +100,11 @@ async function boot() {
       { type: 'separator' }, { role: 'quit' },
     ] },
     { role: 'editMenu' },
-    { label: 'View', submenu: [{ role: 'reload' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen', accelerator: 'F11' }] },
-    { label: 'Help', submenu: [{ label: 'Open application data', click: () => shell.openPath(stateDir) }, { label: 'About Bihon', click: () => dialog.showMessageBox(window, { title: 'Bihon', message: 'Bihon 0.1.0', detail: 'Local Windows manga reader\nPowered by Suwayomi Server 2.3.2243 and WebUI v20260726.01.\nMPL-2.0. Updates are installed manually.\nBackups contain library data; chapter downloads are separate.' }) }] },
+    { label: 'View', submenu: [{ role: 'reload' }, { label: 'Reset zoom', accelerator: 'CmdOrCtrl+0', click: () => changeZoom('reset') }, { label: 'Zoom in', accelerator: 'CmdOrCtrl+Plus', click: () => changeZoom('in') }, { label: 'Zoom out', accelerator: 'CmdOrCtrl+-', click: () => changeZoom('out') }, { role: 'togglefullscreen', accelerator: 'F11' }] },
+    { label: 'Help', submenu: [{ label: 'Updating Bihon...', click: () => dialog.showMessageBox(window, { title: 'Update Bihon', message: 'Close Bihon and run the newer Bihon Setup installer.', detail: 'Install over the existing version. Your library, reading progress, extensions, and download folder are kept. Bihon saves a verified library backup before opening data with a newer version. You do not need to uninstall or add the extension repository again.' }) }, { label: 'Open upgrade backups', click: async () => { const dir = path.join(stateDir, 'backups/bihon-upgrades'); await fs.mkdir(dir, { recursive: true }); await shell.openPath(dir); } }, { label: 'Open application data', click: () => shell.openPath(stateDir) }, { label: 'About Bihon', click: () => dialog.showMessageBox(window, { title: 'Bihon', message: `Bihon ${version}`, detail: 'Local Windows manga reader\nPowered by Suwayomi Server 2.3.2243 and WebUI v20260726.01.\nMPL-2.0. Updates are installed manually.\nBackups contain library data; chapter downloads are separate.' }) }] },
   ]));
   server = new Server({ stateDir, runtime, ui, wrapper });
+  handle('bihon:setup-info', async () => ({ defaultRepositoryReady: !!(await readJson(path.join(stateDir, 'default-repository.json'), null))?.configured }));
   handle('bihon:downloads-info', () => ({ path: settings.downloadsPath }));
   handle('bihon:choose-downloads', chooseDownloads);
   handle('bihon:open-downloads', () => shell.openPath(settings.downloadsPath));
@@ -86,8 +113,14 @@ async function boot() {
     try { await migrate({ stateDir, commit: saveDownloadPath, progress: sendProgress }); }
     finally { busy = false; }
   }
-  await server.start(settings);
-  await window.loadURL(server.url);
+  busy = true;
+  try {
+    const snapshot = await prepareUpgrade({ stateDir, version });
+    await server.start(settings);
+    await markVersionStarted(stateDir, version, snapshot);
+    await setupExtensions();
+    await window.loadURL(server.url);
+  } finally { busy = false; }
 }
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
@@ -97,8 +130,9 @@ else {
   app.on('before-quit', event => {
     if (quitting) return;
     event.preventDefault();
-    if (busy) { dialog.showMessageBox(window, { message: 'Bihon is moving downloads. Please wait for the operation to finish.' }); return; }
+    if (busy) { dialog.showMessageBox(window, { message: 'Bihon is preparing or moving your library. Please wait for the operation to finish.' }); return; }
     quitting = true;
+    clearTimeout(defaultRetry);
     Promise.resolve(server?.stop()).then(() => app.quit()).catch(async error => { quitting = false; await showError(error); });
   });
 }

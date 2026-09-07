@@ -22,6 +22,7 @@ import { defaultPromiseErrorHandler } from '@/lib/DefaultPromiseErrorHandler.ts'
 import { GET_CHAPTERS_READER } from '@/lib/graphql/chapter/ChapterQuery.ts';
 import { TapZoneLayout } from '@/features/reader/tap-zones/TapZoneLayout.tsx';
 import { ReaderRGBAFilter } from '@/features/reader/filters/ReaderRGBAFilter.tsx';
+import { ReaderZoom } from '@/features/reader/viewer/ReaderZoom.tsx';
 import { ReaderViewer } from '@/features/reader/viewer/ReaderViewer.tsx';
 import { ReaderHotkeys } from '@/features/reader/hotkeys/ReaderHotkeys.tsx';
 import { getErrorMessage } from '@/lib/HelperFunctions.ts';
@@ -285,7 +286,7 @@ const BaseReader = ({
                     : `linear-gradient(to right, ${getOptionForDirection(primaryPageBackground, secondaryPageBackground, direction)} 0 50%, ${getOptionForDirection(secondaryPageBackground, primaryPageBackground, direction)} 50% 100%)`,
             }}
         >
-            <ReaderViewer ref={scrollElementRef} />
+            <ReaderZoom key={`${manga.id}-${readingMode.value}`}><ReaderViewer ref={scrollElementRef} /></ReaderZoom>
             <TapZoneLayout />
             <ReaderRGBAFilter />
             <ReaderAutoScroll />

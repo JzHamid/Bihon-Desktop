@@ -10,4 +10,6 @@ Bihon is an independent desktop adaptation of Suwayomi WebUI, powered by an unmo
 
 Changes: Bihon branding, native desktop folder selection, verified download migration, Windows process ownership, packaging, tests, and documentation. Existing source headers and licenses are retained. Bihon additions are MPL-2.0.
 
-Distribute Bihon-0.1.0-source.zip alongside Bihon Setup 0.1.0.exe. The source archive includes the corresponding modified MPL-covered source and build instructions. Recipients may exercise the rights granted by those licenses. Your private GitHub repository does not need to be public.
+Distribute Bihon-0.2.0-source.zip alongside Bihon Setup 0.2.0.exe. The source archive includes the corresponding modified MPL-covered source and build instructions. Recipients may exercise the rights granted by those licenses. Your private GitHub repository does not need to be public.
+
+Bihon 0.2.0 additions: first-run repository registration, pre-upgrade verified snapshots, and reader panel zoom/panning. The default Keiyoushi repository URL is registered automatically; third-party extension binaries and comic content are not bundled.

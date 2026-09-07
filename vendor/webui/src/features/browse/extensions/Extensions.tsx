@@ -170,6 +170,24 @@ export function Extensions({ tabsMenuHeight }: { tabsMenuHeight: number }) {
     );
 
     const handleExtensionUpdate = useCallback(() => setRefetchExtensions({}), []);
+    const refetchStores = extensionStoresRequest.refetch;
+    const [defaultSetupPending, setDefaultSetupPending] = useState(!!window.bihon);
+    useEffect(() => {
+        let active = true;
+        let ready = false;
+        const refresh = () => {
+            ready = true;
+            requestManager.clearExtensionCache();
+            setDefaultSetupPending(false);
+            refetchStores().catch(defaultPromiseErrorHandler('Bihon::defaultRepository'));
+            handleExtensionUpdate();
+        };
+        window.addEventListener('bihon:extensions-ready', refresh);
+        window.bihon?.setupInfo().then((info) => {
+            if (active && !ready) setDefaultSetupPending(!info.defaultRepositoryReady);
+        }).catch(() => { if (active) setDefaultSetupPending(false); });
+        return () => { active = false; window.removeEventListener('bihon:extensions-ready', refresh); };
+    }, [refetchStores, handleExtensionUpdate]);
 
     const submitExternalExtension = (file: File) => {
         if (!file.name.toLowerCase().match(/\.(apk|jar)$/g)) {
@@ -262,6 +280,14 @@ export function Extensions({ tabsMenuHeight }: { tabsMenuHeight: number }) {
     }
 
     const showAddRepoInfo = !allExtensions?.length && !areReposDefined;
+    if (showAddRepoInfo && defaultSetupPending) {
+        return (
+            <Stack role="status" sx={{ alignItems: 'center', gap: 1, p: 3 }}>
+                <Typography variant="h6">Preparing your extension list</Typography>
+                <Typography>Keiyoushi is set up automatically. Connect to the internet; Bihon will keep trying.</Typography>
+            </Stack>
+        );
+    }
     if (showAddRepoInfo) {
         return (
             <Stack

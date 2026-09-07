@@ -1,40 +1,37 @@
-# Bihon
+﻿# Bihon
 
-A local Windows manga and webtoon reader, powered by Suwayomi. No hosted services, subscriptions, or Android emulator. Each person runs their own installation.
+A local Windows manga and webtoon reader powered by Suwayomi. Each friend runs their own installation; no account, hosted server, or separate Java installation is needed.
 
-## Install and read
+## Try it
 
-Run **Bihon Setup 0.1.0.exe**, then open the Bihon desktop shortcut. Java and the reader engine are bundled. Windows may show an unsigned-app notice because this personal build has no paid code-signing certificate.
+1. Run **Bihon Setup 0.2.0.exe** and open Bihon. The build is unsigned, so Windows may display an unsigned-app notice.
+2. Open **Browse > Extensions**, find an extension, and install it. **Keiyoushi is added automatically** on first launch, including upgrades from 0.1.0. No repository URL needs to be pasted. If first launch is offline, setup retries while Bihon is open.
+3. Open **Browse > Sources**, select the installed source, and add a series to your library. Open a chapter to read online, or explicitly download it for offline reading.
 
-1. Open **Browse → Extensions** and add your extension repository in the repository settings. Bihon ships without third-party repositories. Install your chosen compatible extensions, or import an extension APK.
-2. Browse a source, find a series, and add it to your library. Opening a chapter reads online; downloading it explicitly saves it for offline reading. Temporary image caches may still be used during online reading.
-3. In **Settings → Downloads**, choose your download folder. The default is `Downloads\Bihon`. Select an empty destination. Bihon pauses the engine, copies and verifies files, updates the location, and removes verified originals. Interrupted moves resume when Bihon next opens. Do not edit the folders during a move.
-4. Use the reader settings for paged manga, right-to-left reading, webtoon scrolling, fit/width, and keyboard shortcuts. F11 toggles fullscreen; Ctrl +/- adjusts UI zoom. Library display controls adjust grid density.
-5. Use **Settings → Backup** to export/import library backups and configure automatic backups. Daily backups default to 18:00 with 14-day retention while the app is running. Chapter files are separate and are not included in library backups. Mihon imports use Suwayomi's importer; inspect its reported warnings for unsupported data and keep your original backup.
+Pepper&Carrot's repository JVM extension passed online and offline reading tests. Modern APK conversion has limitations; prefer repository-provided JVM extensions. You can add or remove repositories in **Settings > Browse > Extension stores**. Once setup succeeds, Bihon respects removal of the default repository.
 
-Closing Bihon stops its local engine. Library and settings live in `%LOCALAPPDATA%\Bihon`; reinstalling or updating the app preserves these files. The Bihon menu opens downloads, backups, and application data. Updates are manual. Trackers, phone sync, and network sharing are not configured by this release.
+## Reader zoom
 
-## Tested compatibility
+Use **Ctrl + mousewheel** or a **trackpad pinch** over the artwork to zoom from 100% to 500%. Drag the magnified page, or use ordinary wheel/two-finger scrolling to pan. At the pan boundary, scrolling continues through the chapter. The floating **minus / percentage / plus** controls offer the same zoom.
 
-Pepper & Carrot passed installation, online reading, chapter downloads, and offline reading. Extensions vary: xkcd 1.4.17 hit Android compatibility errors during full downloads and APK import. Pepper & Carrot APK conversion also failed; its repository JVM version worked. Prefer a repository that supplies Suwayomi-compatible JVM extensions. See [VERIFICATION.md](VERIFICATION.md) for test evidence and remaining manual checks, including real-phone Mihon backup validation.
+**Ctrl+0**, **Escape** while zoomed, or clicking the percentage resets to fit. **Ctrl +/-** and the View menu also zoom artwork while reading. Outside the reader, the View menu adjusts the interface size. **F11** toggles fullscreen. Reader settings retain paged manga, right-to-left reading, and continuous webtoon modes.
+
+## Storage and backups
+
+**Settings > Downloads > Choose folder** selects your chapter location. The default is `Downloads\Bihon`. Choose an empty destination; Bihon pauses the engine, copies and verifies existing files, saves the location, and removes verified originals. Interrupted moves resume when Bihon reopens.
+
+Library, reading progress, extensions, and settings live in `%LOCALAPPDATA%\Bihon`, separate from installed program files. Local comics and downloads are not included in library backups. Export/import library backups in **Settings > Backup**. Daily backups default to 18:00 with 14-day retention while Bihon is running. Keep original Mihon backups until their contents have been checked after import.
+
+## Updating and sharing
+
+Close Bihon and run the newer installer **over the existing installation**. No uninstall or repository setup is needed. Your library and downloads stay in their existing locations. Before a newer version opens an existing library, Bihon creates and verifies a snapshot of the closed database, settings, and installed extensions. Find it using **Help > Open upgrade backups**.
+
+Share the installer together with `Bihon-0.2.0-source.zip` and the included notices. See [UPDATING.md](UPDATING.md) for release and recovery instructions, [VERIFICATION.md](VERIFICATION.md) for checks and compatibility limits, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for licenses. GitHub remains private; source-code pushes do not automatically install a new version on friends' PCs.
 
 ## Build on Windows
 
-Install Node.js 22.13+ and a JDK 17+. From this directory run:
+Install Node.js 22.13+ and a JDK 17+, then run `powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1`. This installs project-local Node 24, builds the UI, and downloads the pinned server/runtime with checksum verification. No developer tools are needed by end users.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1
-npm test
-npm run dist
-npm run source
-```
+After committing changes and the new version, run **`npm run release`**. It tests, builds the UI and Windows installer, archives the committed corresponding source, and puts checksums and instructions in `dist`. Development uses `npm start`; rebuild UI changes with `npm run build:ui`. Recompile changes to the Java wrapper with `javac --release 17 desktop/java/BihonServer.java`.
 
-The bootstrap downloads the pinned Suwayomi Windows bundle and verifies SHA-256. It installs a project-local Node 24 for the UI build. Runtime bundles, dependencies, tests' data, and installers are ignored by Git. Versions and upstream commits are recorded in `UPSTREAM.json`. `vendor/webui` contains Bihon's modified UI; `vendor/server` contains corresponding unmodified server source. Upstream build instructions remain in those directories.
-
-For development, `npm start` runs the compiled UI. After editing the UI, run `npm run build:ui`. After changing the Java parent-process wrapper, run `javac --release 17 desktop/java/BihonServer.java`. No JDK or Node installation is needed by end users.
-
-## Sharing and privacy
-
-Share the installer **and** `Bihon-0.1.0-source.zip`, which supplies corresponding MPL-covered source and licenses. See `THIRD-PARTY-NOTICES.md`. GitHub source hosting can remain private; recipients retain their license rights. Downloaded chapters, extension installations, personal libraries, credentials, and backups are never part of the source repository or build.
-
-The intended remote is the independent private `JzHamid/Bihon-Desktop`. The original Mihon checkout and `JzHamid/Bihon` repository are preserved.
+The independent source repository is private `JzHamid/Bihon-Desktop`. The original Mihon checkout/repository is preserved. Upstream versions and revisions are recorded in `UPSTREAM.json`; corresponding MPL-covered source is in `vendor/server` and `vendor/webui`.

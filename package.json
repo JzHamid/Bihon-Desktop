@@ -1,6 +1,6 @@
 {
   "name": "bihon-desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "A local Windows manga and webtoon reader powered by Suwayomi",
   "author": "JzHamid",
@@ -11,7 +11,8 @@
     "test": "node --test tests/*.test.cjs",
     "build:ui": "node scripts/build-ui.cjs",
     "dist": "electron-builder --win nsis --x64",
-    "source": "node scripts/source-archive.cjs"
+    "source": "node scripts/source-archive.cjs",
+    "release": "node scripts/release.cjs"
   },
   "devDependencies": {
     "agent-browser": "0.27.0",
