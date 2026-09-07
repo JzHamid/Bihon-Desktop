@@ -1,0 +1,211 @@
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+import gql from 'graphql-tag';
+import { MANGA_META_FIELDS, MANGA_SCREEN_FIELDS } from '@/lib/graphql/manga/MangaFragments.ts';
+import { CHAPTER_LIST_FIELDS } from '@/lib/graphql/chapter/ChapterFragments.ts';
+
+// makes the server fetch and return the manga
+export const REFRESH_MANGA = gql`
+    ${MANGA_SCREEN_FIELDS}
+    ${CHAPTER_LIST_FIELDS}
+
+    mutation REFRESH_MANGA($id: Int!, $fetchManga: Boolean!, $fetchChapters: Boolean!) {
+        fetchMangaAndChapters(input: { id: $id, fetchManga: $fetchManga, fetchChapters: $fetchChapters }) {
+            manga @include(if: $fetchManga) {
+                ...MANGA_SCREEN_FIELDS
+            }
+            chapters @include(if: $fetchChapters) {
+                ...CHAPTER_LIST_FIELDS
+            }
+        }
+    }
+`;
+
+// makes the server fetch and return the manga
+export const GET_MANGA_TO_MIGRATE_TO_FETCH = gql`
+    mutation GET_MANGA_TO_MIGRATE_TO_FETCH(
+        $id: Int!
+        $migrateChapters: Boolean!
+        $migrateCategories: Boolean!
+        $migrateTracking: Boolean!
+    ) {
+        fetchMangaAndChapters(input: { id: $id, fetchManga: true, fetchChapters: $migrateChapters }) {
+            manga {
+                id
+                title
+                inLibrary
+                categories @include(if: $migrateCategories) {
+                    nodes {
+                        id
+                    }
+                }
+                trackRecords @include(if: $migrateTracking) {
+                    nodes {
+                        id
+                        remoteId
+                        trackerId
+                    }
+                }
+            }
+            chapters @include(if: $migrateChapters) {
+                id
+                manga {
+                    id
+                }
+                chapterNumber
+                isRead
+                isDownloaded
+                isBookmarked
+            }
+        }
+    }
+`;
+
+export const UPDATE_MANGA = gql`
+    mutation UPDATE_MANGA(
+        $input: UpdateMangaInput!
+        $updateCategoryInput: UpdateMangaCategoriesInput!
+        $updateCategories: Boolean!
+    ) {
+        updateMangaCategories(input: $updateCategoryInput) @include(if: $updateCategories) {
+            manga {
+                id
+                categories {
+                    nodes {
+                        id
+                        mangas {
+                            totalCount
+                        }
+                    }
+                    totalCount
+                }
+            }
+        }
+        updateManga(input: $input) {
+            manga {
+                id
+                inLibrary
+                inLibraryAt
+            }
+        }
+    }
+`;
+
+export const UPDATE_MANGAS = gql`
+    mutation UPDATE_MANGAS(
+        $input: UpdateMangasInput!
+        $updateCategoryInput: UpdateMangasCategoriesInput!
+        $updateCategories: Boolean!
+    ) {
+        updateMangasCategories(input: $updateCategoryInput) @include(if: $updateCategories) {
+            mangas {
+                id
+                categories {
+                    nodes {
+                        id
+                        mangas {
+                            totalCount
+                        }
+                    }
+                    totalCount
+                }
+            }
+        }
+        updateMangas(input: $input) {
+            mangas {
+                id
+                inLibrary
+                inLibraryAt
+                categories {
+                    nodes {
+                        id
+                        mangas {
+                            totalCount
+                        }
+                    }
+                    totalCount
+                }
+            }
+        }
+    }
+`;
+
+export const UPDATE_MANGA_CATEGORIES = gql`
+    mutation UPDATE_MANGA_CATEGORIES($input: UpdateMangaCategoriesInput!) {
+        updateMangaCategories(input: $input) {
+            manga {
+                id
+                categories {
+                    nodes {
+                        id
+                        mangas {
+                            totalCount
+                        }
+                    }
+                    totalCount
+                }
+            }
+        }
+    }
+`;
+
+export const UPDATE_MANGAS_CATEGORIES = gql`
+    mutation UPDATE_MANGAS_CATEGORIES($input: UpdateMangasCategoriesInput!) {
+        updateMangasCategories(input: $input) {
+            mangas {
+                id
+                categories {
+                    nodes {
+                        id
+                        mangas {
+                            totalCount
+                        }
+                    }
+                    totalCount
+                }
+            }
+        }
+    }
+`;
+
+export const UPDATE_MANGA_METADATA = gql`
+    ${MANGA_META_FIELDS}
+
+    mutation UPDATE_MANGA_METADATA(
+        $preUpdateDeleteInput: DeleteMangaMetasInput!
+        $hasPreUpdateDeletions: Boolean!
+        $updateInput: SetMangaMetasInput!
+        $hasUpdates: Boolean!
+        $postUpdateDeleteInput: DeleteMangaMetasInput!
+        $hasPostUpdateDeletions: Boolean!
+        $migrateInput: SetMangaMetasInput!
+        $isMigration: Boolean!
+    ) {
+        preUpdateDeletedMeta: deleteMangaMetas(input: $preUpdateDeleteInput) @include(if: $hasPreUpdateDeletions) {
+            metas {
+                ...MANGA_META_FIELDS
+            }
+        }
+        updatedMeta: setMangaMetas(input: $updateInput) @include(if: $hasUpdates) {
+            metas {
+                ...MANGA_META_FIELDS
+            }
+        }
+        postUpdateDeletedMeta: deleteMangaMetas(input: $postUpdateDeleteInput) @include(if: $hasPostUpdateDeletions) {
+            metas {
+                ...MANGA_META_FIELDS
+            }
+        }
+        migrationMeta: setMangaMetas(input: $migrateInput) @include(if: $isMigration) {
+            metas {
+                ...MANGA_META_FIELDS
+            }
+        }
+    }
+`;

@@ -1,0 +1,78 @@
+{
+  "name": "bihon-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local Windows manga and webtoon reader powered by Suwayomi",
+  "author": "JzHamid",
+  "license": "MPL-2.0",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "build:ui": "node scripts/build-ui.cjs",
+    "dist": "electron-builder --win nsis --x64",
+    "source": "node scripts/source-archive.cjs"
+  },
+  "devDependencies": {
+    "agent-browser": "0.27.0",
+    "electron": "44.2.0",
+    "electron-builder": "26.15.3",
+    "node": "24.20.0",
+    "playwright": "1.63.0",
+    "pnpm": "11.1.2"
+  },
+  "build": {
+    "appId": "app.bihon.desktop",
+    "productName": "Bihon",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "desktop/**/*",
+      "package.json",
+      "LICENSE",
+      "THIRD-PARTY-NOTICES.md"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime/Suwayomi-Server-v2.3.2243-windows-x64/jre",
+        "to": "runtime/jre"
+      },
+      {
+        "from": "runtime/Suwayomi-Server-v2.3.2243-windows-x64/bin",
+        "to": "runtime/bin"
+      },
+      {
+        "from": "runtime/Suwayomi-Server-v2.3.2243-windows-x64/kcef",
+        "to": "runtime/kcef"
+      },
+      {
+        "from": "desktop/java",
+        "to": "java",
+        "filter": [
+          "*.class"
+        ]
+      },
+      {
+        "from": "vendor/webui/build",
+        "to": "webui"
+      },
+      {
+        "from": "licenses",
+        "to": "licenses"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": null
+  }
+}

@@ -1,0 +1,179 @@
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+import gql from 'graphql-tag';
+import { CHAPTER_META_FIELDS } from '@/lib/graphql/chapter/ChapterFragments.ts';
+import { TRACK_RECORD_BIND_FIELDS } from '@/lib/graphql/tracker/TrackRecordFragments.ts';
+
+// makes the server fetch and return the pages of a chapter
+export const GET_CHAPTER_PAGES_FETCH = gql`
+    mutation GET_CHAPTER_PAGES_FETCH($input: FetchChapterPagesInput!) {
+        fetchChapterPages(input: $input) {
+            chapter {
+                id
+                pageCount
+                isDownloaded
+                manga {
+                    id
+                    downloadCount
+                }
+            }
+            pages
+        }
+    }
+`;
+
+export const UPDATE_CHAPTER = gql`
+    ${TRACK_RECORD_BIND_FIELDS}
+
+    mutation UPDATE_CHAPTER(
+        $input: UpdateChapterInput!
+        $getBookmarked: Boolean!
+        $getRead: Boolean!
+        $getLastPageRead: Boolean!
+        $chapterIdToDelete: Int!
+        $deleteChapter: Boolean!
+        $mangaId: Int!
+        $trackProgress: Boolean!
+    ) {
+        updateChapter(input: $input) {
+            chapter {
+                id
+                isBookmarked @include(if: $getBookmarked)
+                isRead @include(if: $getRead)
+                lastReadAt @include(if: $getRead)
+                lastPageRead @include(if: $getLastPageRead)
+                manga @include(if: $getRead) {
+                    id
+                    unreadCount
+                    lastReadChapter {
+                        id
+                    }
+                    latestReadChapter {
+                        id
+                    }
+                    firstUnreadChapter {
+                        id
+                    }
+                }
+                manga @include(if: $getBookmarked) {
+                    id
+                    bookmarkCount
+                }
+            }
+        }
+        deleteDownloadedChapter(input: { id: $chapterIdToDelete }) @include(if: $deleteChapter) {
+            chapters {
+                id
+                isDownloaded
+                manga {
+                    id
+                    downloadCount
+                }
+            }
+        }
+        trackProgress(input: { mangaId: $mangaId }) @include(if: $trackProgress) {
+            trackRecords {
+                ...TRACK_RECORD_BIND_FIELDS
+            }
+        }
+    }
+`;
+
+export const UPDATE_CHAPTERS = gql`
+    ${TRACK_RECORD_BIND_FIELDS}
+
+    mutation UPDATE_CHAPTERS(
+        $input: UpdateChaptersInput!
+        $getBookmarked: Boolean!
+        $getRead: Boolean!
+        $getLastPageRead: Boolean!
+        $chapterIdsToDelete: [Int!]!
+        $deleteChapters: Boolean!
+        $mangaId: Int!
+        $trackProgress: Boolean!
+    ) {
+        updateChapters(input: $input) {
+            chapters {
+                id
+                isBookmarked @include(if: $getBookmarked)
+                isRead @include(if: $getRead)
+                lastReadAt @include(if: $getRead)
+                lastPageRead @include(if: $getLastPageRead)
+                manga @include(if: $getRead) {
+                    id
+                    unreadCount
+                    lastReadChapter {
+                        id
+                    }
+                    latestReadChapter {
+                        id
+                    }
+                    firstUnreadChapter {
+                        id
+                    }
+                }
+                manga @include(if: $getBookmarked) {
+                    id
+                    bookmarkCount
+                }
+            }
+        }
+        deleteDownloadedChapters(input: { ids: $chapterIdsToDelete }) @include(if: $deleteChapters) {
+            chapters {
+                id
+                isDownloaded
+                manga {
+                    id
+                    downloadCount
+                }
+            }
+        }
+        trackProgress(input: { mangaId: $mangaId }) @include(if: $trackProgress) {
+            trackRecords {
+                ...TRACK_RECORD_BIND_FIELDS
+            }
+        }
+    }
+`;
+
+export const UPDATE_CHAPTER_METADATA = gql`
+    ${CHAPTER_META_FIELDS}
+
+    mutation UPDATE_CHAPTER_METADATA(
+        $preUpdateDeleteInput: DeleteChapterMetasInput!
+        $hasPreUpdateDeletions: Boolean!
+        $updateInput: SetChapterMetasInput!
+        $hasUpdates: Boolean!
+        $postUpdateDeleteInput: DeleteChapterMetasInput!
+        $hasPostUpdateDeletions: Boolean!
+        $migrateInput: SetChapterMetasInput!
+        $isMigration: Boolean!
+    ) {
+        preUpdateDeletedMeta: deleteChapterMetas(input: $preUpdateDeleteInput) @include(if: $hasPreUpdateDeletions) {
+            metas {
+                ...CHAPTER_META_FIELDS
+            }
+        }
+        updatedMeta: setChapterMetas(input: $updateInput) @include(if: $hasUpdates) {
+            metas {
+                ...CHAPTER_META_FIELDS
+            }
+        }
+        postUpdateDeletedMeta: deleteChapterMetas(input: $postUpdateDeleteInput) @include(if: $hasPostUpdateDeletions) {
+            metas {
+                ...CHAPTER_META_FIELDS
+            }
+        }
+        migrationMeta: setChapterMetas(input: $migrateInput) @include(if: $isMigration) {
+            metas {
+                ...CHAPTER_META_FIELDS
+            }
+        }
+    }
+`;

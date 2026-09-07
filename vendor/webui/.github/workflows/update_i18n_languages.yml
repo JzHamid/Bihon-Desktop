@@ -1,0 +1,63 @@
+name: update_i18n_languages.yml
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  update-i18n:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, 'Translations update from Hosted Weblate')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Checkout master branch
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          path: master
+          fetch-depth: 0
+
+      - name: Set up NodeJs
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: './master/package.json'
+
+      - uses: pnpm/action-setup@v4.2.0
+        name: Install pnpm
+        with:
+          version: 11.1.2
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+          key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Install dependencies
+        run: |
+          cd master
+          pnpm ci
+
+      - name: Update i18n resources
+        run: |
+          cd master
+          echo "WEBLATE_TOKEN=${{ secrets.MY_SECRET }}" > .env
+          pnpm i18n:gen-resources
+          pnpm manga:gen-type-tags
+
+      - name: Push changes
+        run: |
+          cd master
+          git push origin HEAD
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

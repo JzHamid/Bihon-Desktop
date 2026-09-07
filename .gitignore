@@ -1,0 +1,13 @@
+node_modules/
+runtime/
+downloads/
+dist/
+artifacts/
+.test-data/
+vendor/**/node_modules/
+vendor/**/.git/
+vendor/**/build/
+vendor/**/.env
+vendor/**/.gradle/
+*.log
+desktop/java/*.class

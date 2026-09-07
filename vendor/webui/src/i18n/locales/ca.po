@@ -1,0 +1,100 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-01-12T20:43:50.781Z\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: ca\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+"X-Message-Format: ICU\n"
+
+#: src/features/category/components/CreateOrEditCategoryDialog.tsx
+msgid "Category Name"
+msgstr "Nom de la categoria"
+
+#: src/features/category/components/CreateOrEditCategoryDialog.tsx
+msgid "Could not create category"
+msgstr "No s'ha pogut crear la categoria"
+
+#: src/features/category/screens/CategorySettings.tsx
+#: src/features/manga/hooks/useManageMangaLibraryState.tsx
+msgid "Could not load categories"
+msgstr "No s'han pogut carregar les categories"
+
+#: src/features/category/components/CreateOrEditCategoryDialog.tsx
+msgid "Default category when adding new manga to the library"
+msgstr "Categoria predeterminada en afegir nous manga a la biblioteca"
+
+#: src/base/components/settings/MutableListSetting.tsx
+#: src/features/category/components/CategorySettingsCard.tsx
+#: src/features/chapter/Chapter.constants.ts
+#: src/features/downloads/components/DownloadQueueChapterCard.tsx
+#: src/features/settings/components/images/KeyValueItem.tsx
+#: src/features/settings/components/images/Processing.tsx
+msgid "Delete"
+msgstr "Elimina"
+
+#: src/features/chapter/Chapter.constants.ts
+msgid "Delete selected"
+msgstr "Elimina els seleccionats"
+
+#: src/features/backup/screens/Backup.tsx
+#: src/features/category/components/CategoriesInclusionSetting.tsx
+msgid "Exclude: {excludedCategoriesText}"
+msgstr "Exclou: {excludedCategoriesText}"
+
+#: src/features/chapter/components/ChaptersToolbarMenu.tsx
+msgid "Filter and sort"
+msgstr "Filtra i ordena"
+
+#: src/features/backup/screens/Backup.tsx
+#: src/features/category/components/CategoriesInclusionSetting.tsx
+msgid "Include: {includedCategoriesText}"
+msgstr "Inclou: {includedCategoriesText}"
+
+#: src/features/chapter/components/ChaptersToolbarMenu.tsx
+msgid "Mark all as read"
+msgstr "Marca'ls tots com a llegits"
+
+#: src/features/chapter/Chapter.constants.ts
+msgid "Mark as read"
+msgstr "Marca com a llegit"
+
+#: src/features/chapter/Chapter.constants.ts
+msgid "Mark as unread"
+msgstr "Marca com a no llegit"
+
+#: src/features/chapter/components/actions/ChapterActionMenuItems.tsx
+msgid "Mark previous as read"
+msgstr "Marca els anteriors com a llegits"
+
+#: src/features/chapter/Chapter.constants.ts
+msgid "Mark selected as read"
+msgstr "Marca els seleccionats com a llegits"
+
+#: src/features/chapter/Chapter.constants.ts
+msgid "Mark selected as unread"
+msgstr "Marca els seleccionats com a no llegits"
+
+#: src/features/category/components/CreateOrEditCategoryDialog.tsx
+msgid "New category"
+msgstr "Nova categoria"
+
+#: src/features/chapter/components/actions/ChapterActionMenuItems.tsx
+#: src/features/manga/components/MangaActionMenuItems.tsx
+msgid "Select"
+msgstr "Selecciona"
+
+#: src/features/library/screens/Library.tsx
+msgid "The category is empty"
+msgstr "La categoria està buida"
+
+#: src/features/category/components/CategorySelect.tsx
+msgid "You don't have any categories yet."
+msgstr "Encara no teniu cap categoria."

@@ -1,0 +1,311 @@
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+import { StringParam, useQueryParam } from 'use-query-params';
+import { useMemo } from 'react';
+import { useMetadataServerSettings } from '@/features/settings/services/ServerSettingsMetadata.ts';
+import type { ChapterType, MangaType, TrackRecordType } from '@/lib/graphql/generated/graphql-base.types.ts';
+import { enhancedCleanup } from '@/base/utils/Strings.ts';
+import { useGetCategoryMetadata } from '@/features/category/services/CategoryMetadata.ts';
+import type { LibraryOptions, LibrarySortMode } from '@/features/library/Library.types.ts';
+import type { CategoryIdInfo, CategoryMetadataInfo } from '@/features/category/Category.types.ts';
+import type {
+    MangaArtistInfo,
+    MangaAuthorInfo,
+    MangaChapterCountInfo,
+    MangaDescriptionInfo,
+    MangaDownloadInfo,
+    MangaGenreInfo,
+    MangaIdInfo,
+    MangaInLibraryInfo,
+    MangaSourceIdInfo,
+    MangaSourceNameInfo,
+    MangaStatusInfo,
+    MangaTitleInfo,
+    MangaUnreadInfo,
+} from '@/features/manga/Manga.types.ts';
+import { SearchParam } from '@/base/Base.types.ts';
+
+const triStateFilter = (
+    triState: NullAndUndefined<boolean>,
+    enabledFilter: () => boolean,
+    disabledFilter: () => boolean,
+): boolean => {
+    switch (triState) {
+        case true:
+            return enabledFilter();
+        case false:
+            return disabledFilter();
+        default:
+            return true;
+    }
+};
+
+const triStateFilterNumber = (triState: NullAndUndefined<boolean>, count?: number): boolean =>
+    triStateFilter(
+        triState,
+        () => !!count && count >= 1,
+        () => count === 0,
+    );
+
+const triStateFilterBoolean = (triState: NullAndUndefined<boolean>, status?: boolean): boolean =>
+    triStateFilter(
+        triState,
+        () => !!status,
+        () => !status,
+    );
+
+const performSearch = (
+    queries: NullAndUndefined<string>[] | undefined,
+    strings: NullAndUndefined<string>[],
+): boolean => {
+    const actualQueries = queries?.filter((query) => query != null);
+    const actualStrings = strings?.filter((str) => str != null);
+
+    if (!actualQueries?.length) {
+        return true;
+    }
+
+    const cleanedUpQueries = actualQueries.map(enhancedCleanup);
+    const cleanedUpStrings = actualStrings.map(enhancedCleanup).join(', ');
+
+    return cleanedUpQueries.every((query) => cleanedUpStrings.includes(query));
+};
+
+type TMangaQueryFilter = MangaTitleInfo &
+    MangaGenreInfo &
+    MangaDescriptionInfo &
+    MangaArtistInfo &
+    MangaAuthorInfo &
+    MangaSourceIdInfo &
+    MangaSourceNameInfo;
+const querySearchManga = (
+    query: NullAndUndefined<string>,
+    { title, genre: genres, description, artist, author, source, sourceId }: TMangaQueryFilter,
+): boolean =>
+    performSearch([query], [title]) ||
+    performSearch(query?.split(','), genres.map((genre) => enhancedCleanup(genre))) ||
+    performSearch([query], [description]) ||
+    performSearch([query], [artist]) ||
+    performSearch([query], [author]) ||
+    performSearch([query], [source?.displayName]) ||
+    performSearch([query], [sourceId]);
+
+type TMangaTrackerFilter = { trackRecords: { nodes: Pick<TrackRecordType, 'id' | 'trackerId'>[] } };
+const trackerFilter = (trackFilters: LibraryOptions['hasTrackerBinding'], manga: TMangaTrackerFilter): boolean =>
+    Object.entries(trackFilters)
+        .map(([trackFilterId, trackFilterState]) => {
+            const isTrackerBound = manga.trackRecords.nodes.some(
+                (trackRecord) => trackRecord.trackerId === Number(trackFilterId),
+            );
+
+            return triStateFilter(
+                trackFilterState,
+                () => isTrackerBound,
+                () => !isTrackerBound,
+            );
+        })
+        .every(Boolean);
+
+const statusFilter = (statusFilters: LibraryOptions['hasStatus'], manga: MangaStatusInfo): boolean =>
+    Object.entries(statusFilters)
+        .map(([status, statusFilterState]) => triStateFilterBoolean(statusFilterState, status === manga.status))
+        .every(Boolean);
+
+const sourceFilter = (sourceFilters: LibraryOptions['hasSource'], manga: MangaSourceIdInfo): boolean =>
+    Object.entries(sourceFilters)
+        .map(([sourceId, sourceFilterState]) => triStateFilterBoolean(sourceFilterState, sourceId === manga.sourceId))
+        .every(Boolean);
+
+type TMangaFilterOptions = Pick<
+    LibraryOptions,
+    | 'hasUnreadChapters'
+    | 'hasReadChapters'
+    | 'hasDownloadedChapters'
+    | 'hasBookmarkedChapters'
+    | 'hasDuplicateChapters'
+    | 'hasTrackerBinding'
+    | 'hasStatus'
+    | 'hasSource'
+>;
+type TMangaFilter = Pick<MangaType, 'bookmarkCount' | 'hasDuplicateChapters'> &
+    TMangaTrackerFilter &
+    MangaStatusInfo &
+    MangaSourceIdInfo &
+    MangaChapterCountInfo &
+    MangaDownloadInfo &
+    MangaUnreadInfo;
+const filterManga = (
+    manga: TMangaFilter,
+    {
+        hasDownloadedChapters,
+        hasUnreadChapters,
+        hasReadChapters,
+        hasBookmarkedChapters,
+        hasDuplicateChapters,
+        hasTrackerBinding,
+        hasStatus,
+        hasSource,
+    }: TMangaFilterOptions,
+): boolean =>
+    triStateFilterNumber(hasDownloadedChapters, manga.downloadCount) &&
+    triStateFilterNumber(hasUnreadChapters, manga.unreadCount) &&
+    triStateFilterNumber(hasReadChapters, manga.chapters.totalCount - manga.unreadCount) &&
+    triStateFilterNumber(hasBookmarkedChapters, manga.bookmarkCount) &&
+    triStateFilterBoolean(hasDuplicateChapters, manga.hasDuplicateChapters) &&
+    trackerFilter(hasTrackerBinding, manga) &&
+    statusFilter(hasStatus, manga) &&
+    sourceFilter(hasSource, manga);
+
+type TMangasFilter = TMangaQueryFilter & TMangaFilter;
+const filterMangas = <Manga extends TMangasFilter>(
+    mangas: Manga[],
+    query: NullAndUndefined<string>,
+    options: TMangaFilterOptions & { ignoreFilters: boolean },
+): Manga[] => {
+    const ignoreFiltersWhileSearching = options.ignoreFilters && query?.length;
+
+    return mangas.filter((manga) => {
+        const matchesSearch = querySearchManga(query, manga);
+        const matchesFilters = ignoreFiltersWhileSearching || filterManga(manga, options);
+
+        return matchesSearch && matchesFilters;
+    });
+};
+
+const sortByNumber = (a: number | string = 0, b: number | string = 0) => Number(a) - Number(b);
+
+const sortByString = (a: string, b: string): number => a.localeCompare(b, undefined, { sensitivity: 'base' });
+
+const sortByRandom = () => Math.floor(Math.random() * 3 - 1);
+
+type TMangaSort = MangaTitleInfo &
+    MangaInLibraryInfo &
+    MangaUnreadInfo &
+    MangaChapterCountInfo & {
+        lastReadChapter?: Pick<ChapterType, 'lastReadAt'> | null;
+        latestUploadedChapter?: Pick<ChapterType, 'uploadDate'> | null;
+        latestFetchedChapter?: Pick<ChapterType, 'fetchedAt'> | null;
+    };
+const sortManga = <Manga extends TMangaSort>(
+    manga: Manga[],
+    sort: NullAndUndefined<LibrarySortMode>,
+    desc: NullAndUndefined<boolean>,
+): Manga[] => {
+    const result = [...manga];
+
+    const primaryComparator = ((): ((a: Manga, b: Manga) => number) => {
+        switch (sort) {
+            case 'alphabetically':
+                return (a, b) => sortByString(a.title, b.title);
+            case 'dateAdded':
+                return (a, b) => sortByNumber(a.inLibraryAt, b.inLibraryAt);
+            case 'unreadChapters':
+                return (a, b) => sortByNumber(a.unreadCount, b.unreadCount);
+            case 'lastRead':
+                return (a, b) => sortByNumber(a.lastReadChapter?.lastReadAt, b.lastReadChapter?.lastReadAt);
+            case 'latestUploadedChapter':
+                return (a, b) => sortByNumber(a.latestUploadedChapter?.uploadDate, b.latestUploadedChapter?.uploadDate);
+            case 'latestFetchedChapter':
+                return (a, b) => sortByNumber(a.latestFetchedChapter?.fetchedAt, b.latestFetchedChapter?.fetchedAt);
+            case 'totalChapters':
+                return (a, b) => sortByNumber(a.chapters.totalCount, b.chapters.totalCount);
+            case 'random':
+                return () => sortByRandom();
+            default:
+                return () => 0;
+        }
+    })();
+
+    result.sort((a, b) => {
+        const cmp = primaryComparator(a, b);
+        if (cmp !== 0) {
+            if (desc) {
+                return -cmp;
+            }
+            return cmp;
+        }
+
+        return sortByString(a.title, b.title);
+    });
+
+    return result;
+};
+
+const DEFAULT_CATEGORY: CategoryIdInfo = { id: -1 };
+export const useGetVisibleLibraryMangas = <Manga extends MangaIdInfo & TMangasFilter & TMangaSort>(
+    mangas: Manga[],
+    category?: CategoryMetadataInfo,
+): {
+    visibleMangas: Manga[];
+    showFilteredOutMessage: boolean;
+    filterKey: string;
+} => {
+    const [query] = useQueryParam(SearchParam.QUERY, StringParam);
+    const options = useGetCategoryMetadata(category ?? DEFAULT_CATEGORY);
+    const {
+        hasUnreadChapters,
+        hasReadChapters,
+        hasDownloadedChapters,
+        hasBookmarkedChapters,
+        hasTrackerBinding,
+        hasDuplicateChapters,
+        hasStatus,
+        hasSource,
+    } = options;
+    const { settings } = useMetadataServerSettings();
+
+    const sortedMangas = useMemo(
+        () => sortManga(mangas, options.sortBy, options.sortDesc),
+        [mangas, options.sortBy, options.sortDesc],
+    );
+
+    const filteredMangas = useMemo(
+        () =>
+            filterMangas(sortedMangas, query, {
+                ...options,
+                ignoreFilters: settings.ignoreFilters,
+            }),
+        [
+            sortedMangas,
+            query,
+            hasUnreadChapters,
+            hasReadChapters,
+            hasDownloadedChapters,
+            hasBookmarkedChapters,
+            hasTrackerBinding,
+            hasDuplicateChapters,
+            hasStatus,
+            hasSource,
+            settings.ignoreFilters,
+        ],
+    );
+
+    const isATrackFilterActive = Object.values(options.hasTrackerBinding).some(
+        (trackFilterState) => trackFilterState != null,
+    );
+    const isASourceFilterActive = Object.values(options.hasSource).some(
+        (sourceFilterState) => sourceFilterState != null,
+    );
+    const showFilteredOutMessage =
+        (hasUnreadChapters != null ||
+            hasReadChapters != null ||
+            hasDownloadedChapters != null ||
+            hasBookmarkedChapters != null ||
+            !!query ||
+            isATrackFilterActive ||
+            isASourceFilterActive) &&
+        filteredMangas.length === 0 &&
+        mangas.length > 0;
+
+    return {
+        visibleMangas: filteredMangas,
+        showFilteredOutMessage,
+        filterKey: `${JSON.stringify(options)}${settings.ignoreFilters}`,
+    };
+};

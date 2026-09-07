@@ -1,0 +1,32 @@
+package suwayomi.tachidesk.manga.model.table
+
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+import org.jetbrains.exposed.v1.core.ReferenceOption
+import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import suwayomi.tachidesk.manga.model.table.ChapterMetaTable.ref
+
+/**
+ * Metadata storage for clients, about Chapter with id == [ref].
+ *
+ *  For example, if you added reader mode(with the key juiReaderMode) such as webtoon to a manga object,
+ *  this is what will show up when you request that manga from the api again
+ *
+ * {
+ *   "id": 10,
+ *   "title": "Isekai manga",
+ *   "meta": {
+ *     "juiReaderMode": "webtoon"
+ *   }
+ * }
+ */
+object ChapterMetaTable : IntIdTable() {
+    val key = varchar("meta_key", 256)
+    val value = varchar("value", 4096)
+    val ref = reference("chapter_ref", ChapterTable, ReferenceOption.CASCADE)
+}
