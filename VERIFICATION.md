@@ -7,7 +7,7 @@ Built on Windows 11, 2026-09-08.
 - A live Project Gutenberg smoke test loaded its official OPDS 1.2 feed and acquired a real public-domain EPUB through Bihon's guarded catalog service. The downloaded fixture and all other test data remain ignored local files.
 - Generated branding was inspected at the original, sidebar, startup/splash, favicon, PWA, PNG, and multi-resolution ICO sizes.
 - The automated Electron Books smoke test could not run in this restricted session because Electron's GPU subprocess failed before a window was available. The failing harness and temporary debugging switch were removed; no claim is made here for a packaged-app reader launch, native picker interaction, or installer launch.
-- The unsigned Windows x64 installer and source archive are built only after committing a clean topic branch. Their result is recorded below when the release command completes.
+- The clean-commit release pipeline produced the unsigned Windows x64 installer, corresponding source archive, and SHA-256 checksum file. The Windows executable and installer use Bihon's generated multi-resolution icon; code signing remains disabled.
 
 ## Historical 0.2.0 evidence
 
