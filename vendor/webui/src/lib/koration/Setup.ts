@@ -6,6 +6,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+import '@/lib/dayjs/Setup.ts';
 import { setDurationAdapter } from 'koration';
 import { DayjsDurationAdapter } from 'koration/adapters/DayjsDurationAdapter';
 

@@ -95,7 +95,7 @@ const NAVIGATION_BAR_DESKTOP_ITEMS = [
         ? [
               {
                   path: AppRoutes.books.path,
-                  title: msg`Books`,
+                  title: { id: 'bihon.books', message: 'Books' },
                   SelectedIconComponent: AutoStoriesIcon,
                   IconComponent: AutoStoriesOutlinedIcon,
                   show: 'desktop' as const,

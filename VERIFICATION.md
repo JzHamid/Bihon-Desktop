@@ -6,7 +6,7 @@ Built on Windows 11, 2026-09-08.
 - WebUI TypeScript checks and the production build passed with the pinned, locally patched Foliate JS revision.
 - A live Project Gutenberg smoke test loaded its official OPDS 1.2 feed and acquired a real public-domain EPUB through Bihon's guarded catalog service. The downloaded fixture and all other test data remain ignored local files.
 - Generated branding was inspected at the original, sidebar, startup/splash, favicon, PWA, PNG, and multi-resolution ICO sizes.
-- The automated Electron Books smoke test could not run in this restricted session because Electron's GPU subprocess failed before a window was available. The failing harness and temporary debugging switch were removed; no claim is made here for a packaged-app reader launch, native picker interaction, or installer launch.
+- An installed-app smoke test exposed a blank renderer caused by Koration's duration adapter initializing before the Day.js duration plugin. The setup modules now declare that dependency directly. A production-bundle Electron rerun mounted the library at `/library` with no page errors and showed the Books navigation label correctly. Native picker interaction and a complete EPUB reading session remain manual checks.
 - The clean-commit release pipeline produced the unsigned Windows x64 installer, corresponding source archive, and SHA-256 checksum file. The Windows executable and installer use Bihon's generated multi-resolution icon; code signing remains disabled.
 
 ## Historical 0.2.0 evidence
