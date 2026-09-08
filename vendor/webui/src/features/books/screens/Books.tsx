@@ -201,10 +201,16 @@ export function Books() {
                     variant="outlined"
                     startIcon={<ExploreIcon />}
                     onClick={() => navigate(AppRoutes.books.children.catalogs.path)}
+                    sx={{ height: 48, minWidth: { sm: 132 }, whiteSpace: 'nowrap' }}
                 >
                     Discover
                 </Button>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => void importBooks()}>
+                <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => void importBooks()}
+                    sx={{ height: 48, minWidth: { sm: 152 }, whiteSpace: 'nowrap' }}
+                >
                     Import EPUBs
                 </Button>
             </Stack>
