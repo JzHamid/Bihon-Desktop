@@ -2,7 +2,7 @@
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { readJson, writeJson, digest } = require('./storage.cjs');
-const SNAPSHOT_ITEMS = ['database.mv.db', 'database.h2.db', 'server.conf', 'desktop-settings.json', 'default-repository.json', 'settings', 'extensions'];
+const SNAPSHOT_ITEMS = ['database.mv.db', 'database.h2.db', 'server.conf', 'desktop-settings.json', 'default-repository.json', 'books.json', 'books', 'settings', 'extensions'];
 function compareVersions(a, b) {
   const x = a.split('.').map(Number), y = b.split('.').map(Number);
   for (let i = 0; i < 3; i++) { if (x[i] !== y[i]) return x[i] > y[i] ? 1 : -1; }

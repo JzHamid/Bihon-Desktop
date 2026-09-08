@@ -59,6 +59,7 @@
         "dayjs": "1.11.21",
         "fast-average-color": "9.5.2",
         "file-selector": "2.1.2",
+        "foliate-js": "github:johnfactotum/foliate-js#78914aef4466eb960965702401634c2cb348e9b1",
         "graphql": "16.14.0",
         "graphql-sock": "1.0.1",
         "graphql-tag": "2.12.6",

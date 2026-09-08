@@ -7,9 +7,9 @@
 
 The installer identity and data location remain stable across versions. Chapter downloads remain in your selected folder. Repository setup is remembered, including a decision to remove the default repository. No GitHub account is needed to install a file shared with you.
 
-Before the new app starts its engine, it copies and SHA-256 verifies the existing database, desktop/server settings, extension preferences, and installed extensions into `%LOCALAPPDATA%\Bihon\backups\bihon-upgrades`. It records the running version only after the engine is ready. Interrupted snapshots retry before startup; insufficient space or verification failures stop the upgrade from opening the library. Ordinary restarts do not create another snapshot for the same version.
+Before the new app starts its engine, it copies and SHA-256 verifies the existing database, desktop/server settings, extension preferences, installed extensions, and EPUB index/cover/progress/catalog configuration into `%LOCALAPPDATA%\Bihon\backups\bihon-upgrades`. It records the running version only after the engine is ready. Interrupted snapshots retry before startup; insufficient space or verification failures stop the upgrade from opening the library. Ordinary restarts do not create another snapshot for the same version.
 
-These snapshots exclude chapter files, local comics, caches, runtime binaries, and the web interface. They do not replace regular library backups or a separate backup of chapter files. Snapshots are retained until you delete them after checking the update.
+These snapshots exclude chapter files, managed EPUB files, local comics, caches, runtime binaries, and the web interface. Managed EPUBs remain inside the selected downloads folder and move through the same verified folder migration as chapter downloads. Snapshots do not replace regular library backups or a separate backup of downloaded content.
 
 ## Recovering after an unsuccessful update
 
@@ -25,8 +25,9 @@ The repository remains private. Pushing code there does not distribute binaries 
 
 For a release:
 
-1. Make the changes, update `package.json` and `package-lock.json` together (for example `npm version patch --no-git-tag-version`), and update the changelog/instructions.
-2. Commit the release source, then run `npm run release` from the project folder.
-3. Push the source to the private repository. Share the new installer, corresponding source archive, notices, instructions, and checksum file from `dist` through your usual file-sharing method.
+1. Start from a clean current `main`, create a topic branch, then update `package.json` and `package-lock.json` together and update the changelog/instructions.
+2. Commit the release source on the topic branch, then run `npm run release` from the project folder.
+3. Push only the topic branch and open a pull request targeting `main`. Do not merge or force-push; the repository owner decides the final merge.
+4. After approval, share the new installer, corresponding source archive, notices, instructions, and checksum file from `dist` through your usual file-sharing method.
 
 Keep `build.appId`, product name, and the application-data directory stable. Retain the pinned engine until a compatible engine/UI upgrade has passed a real old-library migration test. A future automatic updater would need a release-download location accessible to friends; manual installer updates work without accounts or hosting.

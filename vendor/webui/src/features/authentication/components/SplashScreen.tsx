@@ -37,18 +37,27 @@ export const SplashScreen = ({
                 ...slots?.stackProps?.sx,
             }}
         >
-            <SuwayomiLogo
-                circleRingColor={theme.palette.primary.light}
-                circleFillColor={theme.palette.primary.dark}
-                {...slots?.logoProps}
-                sx={{
-                    fontSize: 250,
-                    [theme.breakpoints.up('lg')]: {
-                        fontSize: 350,
-                    },
-                    ...slots?.logoProps?.sx,
-                }}
-            />
+            {window.bihon ? (
+                <Stack
+                    component="img"
+                    src="/branding/bihon-lockup.png"
+                    alt="Bihon"
+                    sx={{ width: 'min(620px, 80vw)', height: 'auto' }}
+                />
+            ) : (
+                <SuwayomiLogo
+                    circleRingColor={theme.palette.primary.light}
+                    circleFillColor={theme.palette.primary.dark}
+                    {...slots?.logoProps}
+                    sx={{
+                        fontSize: 250,
+                        [theme.breakpoints.up('lg')]: {
+                            fontSize: 350,
+                        },
+                        ...slots?.logoProps?.sx,
+                    }}
+                />
+            )}
             <Stack
                 {...slots?.serverAddressProps}
                 sx={{

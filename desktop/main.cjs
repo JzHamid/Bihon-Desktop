@@ -1,15 +1,20 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, protocol } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const { createReadStream } = require('node:fs');
+const { Readable } = require('node:stream');
 const { Server, freePort } = require('./server.cjs');
 const { readJson, writeJson, migrate, inside } = require('./storage.cjs');
 const { configureDefaultRepository } = require('./defaults.cjs');
 const { prepareUpgrade, markVersionStarted } = require('./upgrades.cjs');
+const { BookService, parseByteRange } = require('./books.cjs');
+
+protocol.registerSchemesAsPrivileged([{ scheme: 'bihon-book', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
 
 const stateDir = process.env.BIHON_DATA_DIR || path.join(process.env.LOCALAPPDATA, 'Bihon');
 app.setPath('userData', path.join(stateDir, 'desktop'));
 app.setName('Bihon');
-let window, server, settings, defaultRetry, busy = false, quitting = false;
+let window, server, settings, books, defaultRetry, busy = false, quitting = false;
 const version = app.getVersion();
 function changeZoom(action) {
   if (!window || window.isDestroyed()) return;
@@ -39,7 +44,7 @@ const runtime = app.isPackaged ? path.join(process.resourcesPath, 'runtime') : p
 const ui = app.isPackaged ? path.join(process.resourcesPath, 'webui') : path.join(root, 'vendor/webui/build');
 const wrapper = app.isPackaged ? path.join(process.resourcesPath, 'java') : path.join(__dirname, 'java');
 function sendProgress(message) { if (window && !window.isDestroyed()) window.webContents.send('bihon:progress', message); }
-async function saveDownloadPath(downloadsPath) { settings = { ...settings, downloadsPath }; await writeJson(settingsFile, settings); }
+async function saveDownloadPath(downloadsPath) { settings = { ...settings, downloadsPath }; books?.setDownloadsPath(downloadsPath); await writeJson(settingsFile, settings); }
 function trusted(event) {
   if (event.sender !== window?.webContents || event.senderFrame !== window.webContents.mainFrame || new URL(event.senderFrame.url).origin !== server.url) throw new Error('Untrusted desktop request.');
 }
@@ -70,6 +75,38 @@ async function chooseDownloads() {
     throw new Error(`${error.message}${journal ? ' Close and reopen Bihon to resume the saved migration.' : ''}`);
   } finally { busy = false; }
 }
+async function importBooks() {
+  const selected = await dialog.showOpenDialog(window, { title: 'Import DRM-free EPUB books', defaultPath: settings.downloadsPath, properties: ['openFile', 'multiSelections'], filters: [{ name: 'EPUB books', extensions: ['epub'] }] });
+  if (selected.canceled) return [];
+  return books.importFiles(selected.filePaths);
+}
+async function removeBook(id) {
+  const book = (await books.list()).find(item => item.id === id);
+  if (!book) return false;
+  const result = await dialog.showMessageBox(window, { type: 'warning', title: 'Remove managed EPUB?', message: `Remove “${book.title}” from Bihon?`, detail: 'This deletes only Bihon’s managed copy. Your original imported file is not changed.', buttons: ['Cancel', 'Remove'], defaultId: 0, cancelId: 0 });
+  return result.response === 1 ? books.remove(id) : false;
+}
+async function installBookProtocol() {
+  protocol.handle('bihon-book', async request => {
+    const url = new URL(request.url);
+    const [kind, id] = url.pathname.split('/').filter(Boolean);
+    if (url.hostname !== 'library' || !['book', 'cover'].includes(kind)) return new Response('Not found', { status: 404 });
+    const file = await books.resolve(id, kind);
+    if (!file) return new Response('Not found', { status: 404 });
+    const stat = await fs.stat(file);
+    let range;
+    try { range = parseByteRange(request.headers.get('range'), stat.size); }
+    catch { return new Response('Requested range is not satisfiable.', { status: 416, headers: { 'Content-Range': `bytes */${stat.size}` } }); }
+    const start = range?.start ?? 0, end = range?.end ?? stat.size - 1;
+    const headers = new Headers({ 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1) });
+    if (range) headers.set('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+    headers.set('Content-Type', kind === 'book' ? 'application/epub+zip' : ({ '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' }[path.extname(file).toLowerCase()] || 'application/octet-stream'));
+    headers.set('Content-Security-Policy', "default-src 'none'; img-src bihon-book: data: blob:; style-src 'unsafe-inline'; font-src bihon-book: data: blob:; media-src bihon-book: data: blob:");
+    headers.set('X-Content-Type-Options', 'nosniff');
+    const body = request.method === 'HEAD' ? null : Readable.toWeb(createReadStream(file, { start, end }));
+    return new Response(body, { status: range ? 206 : 200, headers });
+  });
+}
 async function boot() {
   await fs.mkdir(stateDir, { recursive: true });
   settings = await readJson(settingsFile, null);
@@ -77,7 +114,9 @@ async function boot() {
     settings = { downloadsPath: path.join(app.getPath('downloads'), 'Bihon'), port: await freePort() };
     await writeJson(settingsFile, settings);
   }
-  window = new BrowserWindow({ width: 1360, height: 900, minWidth: 900, minHeight: 600, title: 'Bihon', backgroundColor: '#11131a', show: false,
+  books = new BookService({ stateDir, downloadsPath: settings.downloadsPath });
+  await installBookProtocol();
+  window = new BrowserWindow({ width: 1360, height: 900, minWidth: 900, minHeight: 600, title: 'Bihon', icon: path.join(__dirname, 'assets', 'bihon-icon.png'), backgroundColor: '#11131a', show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   window.webContents.on('zoom-changed', (_event, direction) => changeZoom(direction));
   window.once('ready-to-show', () => window.show());
@@ -108,6 +147,19 @@ async function boot() {
   handle('bihon:downloads-info', () => ({ path: settings.downloadsPath }));
   handle('bihon:choose-downloads', chooseDownloads);
   handle('bihon:open-downloads', () => shell.openPath(settings.downloadsPath));
+  handle('bihon:app-info', () => ({ version, engineVersion: '2.3.2243', webuiVersion: 'v20260726.01', stateDir, downloadsPath: settings.downloadsPath }));
+  handle('bihon:open-licenses', () => shell.openPath(app.isPackaged ? path.join(process.resourcesPath, 'licenses') : path.join(root, 'licenses')));
+  handle('bihon:books-list', () => books.list());
+  handle('bihon:books-import', importBooks);
+  handle('bihon:books-finalize', (id, metadata) => books.finalize(id, metadata));
+  handle('bihon:books-progress', (id, progress) => books.saveProgress(id, progress));
+  handle('bihon:books-remove', removeBook);
+  handle('bihon:catalogs-list', () => books.catalogs());
+  handle('bihon:catalogs-add', input => books.addCatalog(input));
+  handle('bihon:catalogs-remove', id => books.removeCatalog(id));
+  handle('bihon:catalogs-fetch', (id, url) => books.fetchCatalog(id, url));
+  handle('bihon:catalogs-cover', (id, url) => books.fetchCover(id, url));
+  handle('bihon:catalogs-acquire', (id, url) => books.acquire(id, url));
   if (await readJson(path.join(stateDir, 'download-migration.json'), null)) {
     busy = true;
     try { await migrate({ stateDir, commit: saveDownloadPath, progress: sendProgress }); }

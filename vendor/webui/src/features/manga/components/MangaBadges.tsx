@@ -14,6 +14,8 @@ import type { MangaCardMode } from '@/features/manga/Manga.types.ts';
 import { MediaQuery } from '@/base/utils/MediaQuery.tsx';
 import { useMetadataServerSettings } from '@/features/settings/services/ServerSettingsMetadata.ts';
 import { MUIUtil } from '@/lib/mui/MUI.util.ts';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import Tooltip from '@mui/material/Tooltip';
 
 const BadgeContainer = styled('div')(({ theme }) => ({
     display: 'flex',
@@ -33,6 +35,7 @@ export const MangaBadges = ({
     isInLibrary,
     unread,
     downloadCount,
+    missingChapterCount,
     mode,
 }: {
     inLibraryIndicator?: boolean;
@@ -40,6 +43,7 @@ export const MangaBadges = ({
     isInLibrary: boolean;
     unread?: number;
     downloadCount?: number;
+    missingChapterCount?: number;
     mode: MangaCardMode;
 }) => {
     const { t } = useLingui();
@@ -92,6 +96,23 @@ export const MangaBadges = ({
                 >
                     {downloadCount}
                 </Badge>
+            )}
+            {mode === 'default' && (missingChapterCount ?? 0) > 0 && (
+                <Tooltip title={t`${missingChapterCount} numeric gaps in fetched chapters`}>
+                    <Badge
+                        aria-label={t`${missingChapterCount} numeric gaps in fetched chapters`}
+                        sx={{
+                            backgroundColor: 'warning.main',
+                            color: 'warning.contrastText',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.25,
+                        }}
+                    >
+                        <WarningAmberIcon sx={{ fontSize: '1rem' }} />
+                        {missingChapterCount}
+                    </Badge>
+                </Tooltip>
             )}
         </BadgeContainer>
     );

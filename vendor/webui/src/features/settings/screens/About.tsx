@@ -24,8 +24,65 @@ import { epochToDate } from '@/base/utils/DateHelper.ts';
 import { useAppTitle } from '@/features/navigation-bar/hooks/useAppTitle.ts';
 import { DebugInformation } from '@/features/settings/components/DebugInformation.tsx';
 import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import { useEffect, useState } from 'react';
 
 export function About() {
+    return window.bihon ? <BihonAbout /> : <UpstreamAbout />;
+}
+
+function BihonAbout() {
+    const [info, setInfo] = useState<Awaited<ReturnType<NonNullable<typeof window.bihon>['appInfo']>>>();
+    useAppTitle('About Bihon');
+    useEffect(() => {
+        window.bihon!.appInfo().then(setInfo).catch(defaultPromiseErrorHandler('About::appInfo'));
+    }, []);
+    return (
+        <List sx={{ pt: 0 }}>
+            <Box sx={{ display: 'grid', placeItems: 'center', py: 3 }}>
+                <Box
+                    component="img"
+                    src="/branding/bihon-lockup.png"
+                    alt="Bihon"
+                    sx={{ width: 'min(420px, 75vw)', height: 'auto' }}
+                />
+                <Typography variant="h6">Version {info?.version ?? '…'}</Typography>
+            </Box>
+            <Divider />
+            <ListItem>
+                <ListItemText
+                    primary="Bundled manga engine"
+                    secondary={`Suwayomi Server ${info?.engineVersion ?? '…'}`}
+                />
+            </ListItem>
+            <ListItem>
+                <ListItemText primary="Bundled WebUI" secondary={info?.webuiVersion ?? '…'} />
+            </ListItem>
+            <ListItem>
+                <ListItemText primary="Application data" secondary={info?.stateDir ?? '…'} />
+            </ListItem>
+            <ListItem>
+                <ListItemText primary="Downloads" secondary={info?.downloadsPath ?? '…'} />
+            </ListItem>
+            <ListItem>
+                <Button onClick={() => void window.bihon!.openLicenses()}>Open licenses</Button>
+            </ListItem>
+            <ListItemLink to="https://github.com/JzHamid/Bihon-Desktop" target="_blank" rel="noreferrer">
+                <ListItemText primary="Bihon repository" secondary="github.com/JzHamid/Bihon-Desktop" />
+            </ListItemLink>
+            <Divider />
+            <List subheader={<ListSubheader component="div">Debug information</ListSubheader>}>
+                <Stack sx={{ px: 2, py: 1 }}>
+                    <DebugInformation />
+                </Stack>
+            </List>
+        </List>
+    );
+}
+
+function UpstreamAbout() {
     const { t } = useLingui();
 
     useAppTitle(t`About`);

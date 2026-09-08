@@ -4,3 +4,5 @@ allowBuilds:
     '@swc/core': true
     core-js: true
     esbuild: true
+patchedDependencies:
+    foliate-js@0.0.0: patches/foliate-js@0.0.0.patch

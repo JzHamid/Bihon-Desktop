@@ -33,6 +33,7 @@ import { getErrorMessage } from '@/lib/HelperFunctions.ts';
 import { assertIsDefined } from '@/base/Asserts.ts';
 import { usePress } from '@/base/hooks/usePress.ts';
 import { Confirmation } from '@/base/AppAwaitableComponent.ts';
+import { Chapters } from '@/features/chapter/services/Chapters.ts';
 
 const getMangaLinkTo = (mode: MangaCardMode, mangaId: number): string => {
     switch (mode) {
@@ -59,6 +60,10 @@ export const MangaCard = memo((props: MangaCardProps) => {
         onMigrateSelect,
     } = props;
     const { id, firstUnreadChapter, downloadCount, unreadCount } = manga;
+    const missingChapterCount = useMemo(
+        () => Chapters.getMissingCount(manga.chapters?.nodes ?? []),
+        [manga.chapters?.nodes],
+    );
 
     const { mangaId: mangaIdAsString } = useParams<{ mangaId: string }>();
     const migrationSourceMangaId = Number(mangaIdAsString);
@@ -206,6 +211,7 @@ export const MangaCard = memo((props: MangaCardProps) => {
                                 isInLibrary={isInLibrary}
                                 unread={unreadCount}
                                 downloadCount={downloadCount}
+                                missingChapterCount={missingChapterCount}
                                 updateLibraryState={updateLibraryState}
                                 mode={mode}
                             />

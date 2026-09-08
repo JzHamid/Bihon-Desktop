@@ -19,6 +19,8 @@ import GetAppOutlinedIcon from '@mui/icons-material/GetAppOutlined';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import SettingsIcon from '@mui/icons-material/Settings';
 import InfoIcon from '@mui/icons-material/Info';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
 import { useLingui } from '@lingui/react/macro';
 import { msg, plural } from '@lingui/core/macro';
 import type { NavbarItem } from '@/features/navigation-bar/NavigationBar.types.ts';
@@ -89,6 +91,18 @@ const NAVIGATION_BAR_BASE_ITEMS = [
 ] as const satisfies RestrictedNavBarItem<'both'>[];
 
 const NAVIGATION_BAR_DESKTOP_ITEMS = [
+    ...(window.bihon
+        ? [
+              {
+                  path: AppRoutes.books.path,
+                  title: msg`Books`,
+                  SelectedIconComponent: AutoStoriesIcon,
+                  IconComponent: AutoStoriesOutlinedIcon,
+                  show: 'desktop' as const,
+                  moreGroup: NavBarItemMoreGroup.HIDDEN_ITEM,
+              },
+          ]
+        : []),
     {
         path: AppRoutes.downloads.path,
         title: msg`Downloads`,

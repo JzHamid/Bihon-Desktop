@@ -1,0 +1,60 @@
+diff --git a/epub.js b/epub.js
+index e8bd70333accb9f9f6fb7389cb434b6805156da0..c18bae80f255392042c23a267ccf1b6101071013 100644
+--- a/epub.js
++++ b/epub.js
+@@ -858,7 +858,21 @@ class Loader {
+             for (const el of doc.querySelectorAll('[style]'))
+                 el.setAttribute('style',
+                     await this.replaceCSS(el.getAttribute('style'), href, parents))
+-            // TODO: replace inline scripts? probably not worth the trouble
++            // Bihon treats publications as untrusted documents. Remove active
++            // content before serialization and add a second layer of CSP
++            // protection inside every HTML/XHTML publication frame.
++            for (const el of doc.querySelectorAll('script, meta[http-equiv="refresh" i]'))
++                el.remove()
++            for (const el of doc.querySelectorAll('*'))
++                for (const attr of Array.from(el.attributes))
++                    if (/^on/i.test(attr.name)) el.removeAttribute(attr.name)
++            const head = doc.querySelector('head')
++            if (head) {
++                const meta = doc.createElementNS(head.namespaceURI, 'meta')
++                meta.setAttribute('http-equiv', 'Content-Security-Policy')
++                meta.setAttribute('content', "default-src 'none'; img-src blob: data:; style-src blob: 'unsafe-inline'; font-src blob: data:; media-src blob: data:")
++                head.prepend(meta)
++            }
+             const result = new XMLSerializer().serializeToString(doc)
+             return this.createURL(href, result, item.mediaType, parent)
+         }
+diff --git a/fixed-layout.js b/fixed-layout.js
+index c582abad1496874a9265cad1ab69e12a475c684d..8f53492c2faf5869c634a79caa498700151c63d3 100644
+--- a/fixed-layout.js
++++ b/fixed-layout.js
+@@ -81,9 +81,8 @@ export class FixedLayout extends HTMLElement {
+             display: 'none',
+             overflow: 'hidden',
+         })
+-        // `allow-scripts` is needed for events because of WebKit bug
+-        // https://bugs.webkit.org/show_bug.cgi?id=218086
+-        iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts')
++        // Bihon never grants publication content script execution.
++        iframe.setAttribute('sandbox', 'allow-same-origin')
+         iframe.setAttribute('scrolling', 'no')
+         iframe.setAttribute('part', 'filter')
+         this.#root.append(element)
+diff --git a/paginator.js b/paginator.js
+index 7980c20297049e38b5e5a1d44a9eee11b1fbd68e..db352f1ba0fa53c85e598738a75bb8785087cdc3 100644
+--- a/paginator.js
++++ b/paginator.js
+@@ -239,9 +239,9 @@ class View {
+             display: 'none',
+             width: '100%', height: '100%',
+         })
+-        // `allow-scripts` is needed for events because of WebKit bug
+-        // https://bugs.webkit.org/show_bug.cgi?id=218086
+-        this.#iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts')
++        // Bihon never grants publication content script execution. Event
++        // handling is performed by the trusted parent in Electron/Chromium.
++        this.#iframe.setAttribute('sandbox', 'allow-same-origin')
+         this.#iframe.setAttribute('scrolling', 'no')
+     }
+     get element() {
