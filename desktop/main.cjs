@@ -88,23 +88,28 @@ async function removeBook(id) {
 }
 async function installBookProtocol() {
   protocol.handle('bihon-book', async request => {
-    const url = new URL(request.url);
-    const [kind, id] = url.pathname.split('/').filter(Boolean);
-    if (url.hostname !== 'library' || !['book', 'cover'].includes(kind)) return new Response('Not found', { status: 404 });
-    const file = await books.resolve(id, kind);
-    if (!file) return new Response('Not found', { status: 404 });
-    const stat = await fs.stat(file);
-    let range;
-    try { range = parseByteRange(request.headers.get('range'), stat.size); }
-    catch { return new Response('Requested range is not satisfiable.', { status: 416, headers: { 'Content-Range': `bytes */${stat.size}` } }); }
-    const start = range?.start ?? 0, end = range?.end ?? stat.size - 1;
-    const headers = new Headers({ 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1) });
-    if (range) headers.set('Content-Range', `bytes ${start}-${end}/${stat.size}`);
-    headers.set('Content-Type', kind === 'book' ? 'application/epub+zip' : ({ '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' }[path.extname(file).toLowerCase()] || 'application/octet-stream'));
-    headers.set('Content-Security-Policy', "default-src 'none'; img-src bihon-book: data: blob:; style-src 'unsafe-inline'; font-src bihon-book: data: blob:; media-src bihon-book: data: blob:");
-    headers.set('X-Content-Type-Options', 'nosniff');
-    const body = request.method === 'HEAD' ? null : Readable.toWeb(createReadStream(file, { start, end }));
-    return new Response(body, { status: range ? 206 : 200, headers });
+    try {
+      const url = new URL(request.url);
+      const [kind, id] = url.pathname.split('/').filter(Boolean);
+      if (url.hostname !== 'library' || !['book', 'cover'].includes(kind)) return new Response('Not found', { status: 404 });
+      const file = await books.resolve(id, kind);
+      if (!file) return new Response('Not found', { status: 404 });
+      const stat = await fs.stat(file);
+      let range;
+      try { range = parseByteRange(request.headers.get('range'), stat.size); }
+      catch { return new Response('Requested range is not satisfiable.', { status: 416, headers: { 'Content-Range': `bytes */${stat.size}` } }); }
+      const start = range?.start ?? 0, end = range?.end ?? stat.size - 1;
+      const headers = new Headers({ 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1) });
+      if (range) headers.set('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+      headers.set('Content-Type', kind === 'book' ? 'application/epub+zip' : ({ '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' }[path.extname(file).toLowerCase()] || 'application/octet-stream'));
+      headers.set('Content-Security-Policy', "default-src 'none'; img-src bihon-book: data: blob:; style-src 'unsafe-inline'; font-src bihon-book: data: blob:; media-src bihon-book: data: blob:");
+      headers.set('X-Content-Type-Options', 'nosniff');
+      const body = request.method === 'HEAD' ? null : Readable.toWeb(createReadStream(file, { start, end }));
+      return new Response(body, { status: range ? 206 : 200, headers });
+    } catch (error) {
+      console.error('[books:protocol] Failed to serve indexed book.', error);
+      return new Response('Unable to open this book.', { status: 500 });
+    }
   });
 }
 async function boot() {

@@ -54,6 +54,21 @@ const loadSettings = () => {
         return {};
     }
 };
+const applyReaderSettings = (
+    element: View | null,
+    flow: string,
+    theme: string,
+    fontSize: number,
+    lineSpacing: number,
+    margin: number,
+) => {
+    const renderer = element?.renderer;
+    if (!renderer) {
+        return;
+    }
+    renderer.setAttribute('flow', flow);
+    renderer.setStyles?.(readerCss(theme, fontSize, lineSpacing, margin));
+};
 
 export function BookReader() {
     const { bookId = '' } = useParams();
@@ -85,8 +100,7 @@ export function BookReader() {
             if (disposed) {
                 return;
             }
-            element.renderer.setAttribute('flow', flow);
-            element.renderer.setStyles?.(readerCss(theme, fontSize, lineSpacing, margin));
+            applyReaderSettings(element, flow, theme, fontSize, lineSpacing, margin);
             element.addEventListener('external-link', (event) => event.preventDefault());
             element.addEventListener('relocate', ((event: CustomEvent) => {
                 const location = event.detail;
@@ -122,8 +136,7 @@ export function BookReader() {
         };
     }, [bookId]);
     useEffect(() => {
-        view.current?.renderer.setAttribute('flow', flow);
-        view.current?.renderer.setStyles?.(readerCss(theme, fontSize, lineSpacing, margin));
+        applyReaderSettings(view.current, flow, theme, fontSize, lineSpacing, margin);
         localStorage.setItem(READER_SETTINGS_KEY, JSON.stringify({ flow, theme, fontSize, lineSpacing, margin }));
     }, [flow, theme, fontSize, lineSpacing, margin]);
     useEffect(() => {
@@ -301,7 +314,7 @@ export function BookReader() {
                         </>
                     )}
                     {book &&
-                        view.current?.book.toc?.map((item) => (
+                        view.current?.book?.toc?.map((item) => (
                             <Button
                                 key={`${item.href}-${item.label}`}
                                 sx={{ justifyContent: 'flex-start' }}

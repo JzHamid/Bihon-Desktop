@@ -20,7 +20,7 @@ declare module 'foliate-js/view.js' {
             toc?: { label?: string; href?: string; subitems?: unknown[] }[];
             getCover?: () => Promise<Blob | null> | Blob | null;
         };
-        renderer: { setAttribute(name: string, value: string): void; setStyles?(css: string): void };
+        renderer?: { setAttribute(name: string, value: string): void; setStyles?(css: string): void };
         lastLocation?: FoliateLocation;
         open(input: string | File): Promise<void>;
         init(options: { lastLocation?: string; showTextStart?: boolean }): Promise<void>;
