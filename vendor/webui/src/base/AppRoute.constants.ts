@@ -171,6 +171,20 @@ export const AppRoutes = {
         match: 'downloads',
         path: '/downloads',
     },
+    books: {
+        match: 'books',
+        path: '/books',
+        children: {
+            catalogs: {
+                match: 'catalogs',
+                path: '/books/catalogs',
+            },
+            reader: {
+                match: ':bookId/read',
+                path: (bookId: string) => `/books/${bookId}/read`,
+            },
+        },
+    },
     manga: {
         match: 'manga/:id',
         path: (mangaId: MangaIdInfo['id']) => `/manga/${mangaId}`,

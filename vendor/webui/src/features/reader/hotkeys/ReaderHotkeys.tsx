@@ -179,6 +179,9 @@ export const ReaderHotkeys = ({
         }),
     );
     useHotkeys(hotkeys[ReaderHotkey.EXIT_READER], exitReader, [exitReader]);
+    // Escape is reserved by Bihon. ReaderZoom consumes the first press while
+    // magnified; at 100% it reaches this handler and follows the configured exit destination.
+    useHotkeys('escape', exitReader, [exitReader]);
 
     useEffect(() => {
         enableScope(HotkeyScope.READER);

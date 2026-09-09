@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  foliate-js@0.0.0: 17f808fda2c554549c0704ba0fe978aacf03e4749639154172315ac92bab7a2f
+
 importers:
 
   .:
@@ -86,6 +89,9 @@ importers:
       file-selector:
         specifier: 2.1.2
         version: 2.1.2
+      foliate-js:
+        specifier: github:johnfactotum/foliate-js#78914aef4466eb960965702401634c2cb348e9b1
+        version: https://codeload.github.com/johnfactotum/foliate-js/tar.gz/78914aef4466eb960965702401634c2cb348e9b1(patch_hash=17f808fda2c554549c0704ba0fe978aacf03e4749639154172315ac92bab7a2f)
       graphql:
         specifier: 16.14.0
         version: 16.14.0
@@ -3572,6 +3578,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -3704,6 +3711,10 @@ packages:
 
   flatted@3.4.2:
     resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
+
+  foliate-js@https://codeload.github.com/johnfactotum/foliate-js/tar.gz/78914aef4466eb960965702401634c2cb348e9b1:
+    resolution: {gitHosted: true, integrity: sha512-YmnYMiOUgcsd+5deF7DKOUvkBBhONGKor4JP7JFCZ9QiMs10ap4xg7XbIGHkCiZNLsASlpNGgavHuYePQH1Gzg==, tarball: https://codeload.github.com/johnfactotum/foliate-js/tar.gz/78914aef4466eb960965702401634c2cb348e9b1}
+    version: 0.0.0
 
   for-each@0.3.5:
     resolution: {integrity: sha512-dKx12eRCVIzqCxFGplyFKJMPvLEWgmNtUrpTiJIR5u97zEhRG8ySrtboPHZXx7daLxQVrl643cTzbab2tkQjxg==}
@@ -9256,6 +9267,8 @@ snapshots:
       keyv: 4.5.4
 
   flatted@3.4.2: {}
+
+  foliate-js@https://codeload.github.com/johnfactotum/foliate-js/tar.gz/78914aef4466eb960965702401634c2cb348e9b1(patch_hash=17f808fda2c554549c0704ba0fe978aacf03e4749639154172315ac92bab7a2f): {}
 
   for-each@0.3.5:
     dependencies:

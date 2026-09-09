@@ -43,6 +43,7 @@ import { assertIsDefined } from '@/base/Asserts.ts';
 import { DirectionOffset } from '@/base/Base.types.ts';
 import { Confirmation } from '@/base/AppAwaitableComponent.ts';
 import { i18n } from '@/i18n';
+import { getNumericChapterGapCount } from '@/features/chapter/services/ChapterGaps.ts';
 
 export class Chapters {
     static getIds(chapters: { id: number }[]): number[] {
@@ -454,13 +455,7 @@ export class Chapters {
     }
 
     static getMissingCount<Chapter extends ChapterNumberInfo>(chapters: Chapter[]): number {
-        const sortedChapters = chapters.toSorted((a, b) => a.chapterNumber - b.chapterNumber);
-
-        return sortedChapters.reduce(
-            (missingChapterCount, chapter, index) =>
-                missingChapterCount + Chapters.getGap(chapter, sortedChapters[index - 1]),
-            0,
-        );
+        return getNumericChapterGapCount(chapters.map(({ chapterNumber }) => chapterNumber));
     }
 
     static getGap<Chapter extends ChapterNumberInfo>(

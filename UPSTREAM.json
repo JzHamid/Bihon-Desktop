@@ -1,5 +1,6 @@
 {
   "webui": { "url": "https://github.com/Suwayomi/Suwayomi-WebUI", "tag": "v20260726.01", "revision": "47d414867e7b6af753ba65ea9a4517326bcbc3da", "license": "MPL-2.0" },
   "server": { "url": "https://github.com/Suwayomi/Suwayomi-Server", "tag": "v2.3.2243", "revision": "1d583ca4a718646e17a4c62d23fe8e5edccaf774", "license": "MPL-2.0" },
-  "runtime": { "asset": "Suwayomi-Server-v2.3.2243-windows-x64.zip", "sha256": "895843f48d5735e01bdc43d79ab66e600d6f507076a9b792ffa418a9bbcc32c2", "java": "25.0.3" }
+  "runtime": { "asset": "Suwayomi-Server-v2.3.2243-windows-x64.zip", "sha256": "895843f48d5735e01bdc43d79ab66e600d6f507076a9b792ffa418a9bbcc32c2", "java": "25.0.3" },
+  "foliateJs": { "url": "https://github.com/johnfactotum/foliate-js", "revision": "78914aef4466eb960965702401634c2cb348e9b1", "license": "MIT", "patch": "vendor/webui/patches/foliate-js@0.0.0.patch" }
 }

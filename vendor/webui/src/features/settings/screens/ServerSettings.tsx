@@ -93,11 +93,21 @@ const getLogFilesCleanupDisplayValue = (ttl: number): string => {
     });
 };
 
-export const ServerSettings = () => window.bihon ? (
-    <List><ListItem><ListItemText primary="Local engine" secondary="Bihon manages its bundled Suwayomi engine automatically. It is available only on this PC. Use the Bihon menu to open application data or backups." /></ListItem></List>
-) : <StandaloneServerSettings />;
+export const ServerSettings = () =>
+    window.bihon ? (
+        <List>
+            <ListItem>
+                <ListItemText
+                    primary="Local engine"
+                    secondary="Bihon manages its bundled Suwayomi engine automatically. It is available only on this PC. Use the Bihon menu to open application data or backups."
+                />
+            </ListItem>
+        </List>
+    ) : (
+        <StandaloneServerSettings />
+    );
 
-const StandaloneServerSettings = () => {
+function StandaloneServerSettings() {
     const { t } = useLingui();
 
     useAppTitle(t`Server`);
@@ -901,4 +911,4 @@ const StandaloneServerSettings = () => {
             </List>
         </List>
     );
-};
+}

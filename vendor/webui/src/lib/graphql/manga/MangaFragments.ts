@@ -119,6 +119,12 @@ export const MANGA_LIBRARY_FIELDS = gql`
         ...MANGA_CHAPTER_STAT_FIELDS
         ...MANGA_CHAPTER_NODE_FIELDS
 
+        chapters {
+            nodes {
+                chapterNumber
+            }
+        }
+
         genre
         lastFetchedAt
         inLibraryAt

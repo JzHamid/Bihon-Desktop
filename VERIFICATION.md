@@ -1,3 +1,16 @@
+# Verification: Bihon 0.3.0
+
+Built on Windows 11, 2026-09-08.
+
+- Root unit tests passed for EPUB import and duplicate detection, managed-copy deletion, metadata sanitization, progress bounds, invalid archive cleanup, OPDS URL/network policy, redirect revalidation, response limits, OPDS 1.2/2.0 transport, chapter-gap edge cases, download migration, repository setup, and upgrade snapshots.
+- WebUI TypeScript checks and the production build passed with the pinned, locally patched Foliate JS revision.
+- A live Project Gutenberg smoke test loaded its official OPDS 1.2 feed and acquired a real public-domain EPUB through Bihon's guarded catalog service. The downloaded fixture and all other test data remain ignored local files.
+- Generated branding was inspected at the original, sidebar, startup/splash, favicon, PWA, PNG, and multi-resolution ICO sizes.
+- An installed-app smoke test exposed a blank renderer caused by Koration's duration adapter initializing before the Day.js duration plugin. The setup modules now declare that dependency directly. A production-bundle Electron rerun mounted the library at `/library` with no page errors and showed the Books navigation label correctly. Native picker interaction and a complete EPUB reading session remain manual checks.
+- The clean-commit release pipeline produced the unsigned Windows x64 installer, corresponding source archive, and SHA-256 checksum file. The Windows executable and installer use Bihon's generated multi-resolution icon; code signing remains disabled.
+
+## Historical 0.2.0 evidence
+
 # Verification: Bihon 0.2.0
 
 Built on Windows 11, 2026-09-07.

@@ -104,6 +104,9 @@ const { ExtensionStores } = loadable(
     () => import('@/features/extension/store/screens/ExtensionStores.tsx'),
     lazyLoadFallback,
 );
+const { Books } = loadable(() => import('@/features/books/screens/Books.tsx'), lazyLoadFallback);
+const { BookCatalogs } = loadable(() => import('@/features/books/screens/BookCatalogs.tsx'), lazyLoadFallback);
+const { BookReader } = loadable(() => import('@/features/books/screens/BookReader.tsx'), lazyLoadFallback);
 
 if (import.meta.env.DEV) {
     // Adds messages only in a dev environment
@@ -359,6 +362,13 @@ const MainApp = () => {
                             <Route path={AppRoutes.extension.children.info.match} element={<ExtensionInfo />} />
                         </Route>
                         <Route path={AppRoutes.downloads.match} element={<DownloadQueue />} />
+                        {window.bihon && (
+                            <Route path={AppRoutes.books.match}>
+                                <Route index element={<Books />} />
+                                <Route path={AppRoutes.books.children.catalogs.match} element={<BookCatalogs />} />
+                                <Route path={AppRoutes.books.children.reader.match} element={<BookReader />} />
+                            </Route>
+                        )}
                         <Route path={AppRoutes.manga.match}>
                             <Route path={AppRoutes.manga.children.reader.match} element={null} />
                             <Route index element={<Manga />} />

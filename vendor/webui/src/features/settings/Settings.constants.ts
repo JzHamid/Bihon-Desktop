@@ -8,6 +8,7 @@
 
 import type { MessageDescriptor } from '@lingui/core';
 import { msg } from '@lingui/core/macro';
+import '@/lib/koration/Setup.ts';
 import { d } from 'koration';
 import { DEFAULT_DEVICE } from '@/features/device/services/Device.ts';
 import { DEFAULT_SORT_SETTINGS } from '@/features/migration/Migration.constants.ts';

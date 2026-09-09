@@ -1,8 +1,8 @@
 {
   "name": "bihon-desktop",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "A local Windows manga and webtoon reader powered by Suwayomi",
+  "description": "A local Windows manga, webtoon, and EPUB reader powered by Suwayomi",
   "author": "JzHamid",
   "license": "MPL-2.0",
   "main": "desktop/main.cjs",
@@ -10,6 +10,7 @@
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
     "build:ui": "node scripts/build-ui.cjs",
+    "verify:books": "node scripts/verify-books.cjs",
     "dist": "electron-builder --win nsis --x64",
     "source": "node scripts/source-archive.cjs",
     "release": "node scripts/release.cjs"
@@ -65,14 +66,17 @@
     ],
     "win": {
       "target": "nsis",
-      "signAndEditExecutable": false
+      "icon": "desktop/assets/bihon.ico",
+      "signExecutable": false
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "desktop/assets/bihon.ico",
+      "uninstallerIcon": "desktop/assets/bihon.ico"
     },
     "publish": null
   }

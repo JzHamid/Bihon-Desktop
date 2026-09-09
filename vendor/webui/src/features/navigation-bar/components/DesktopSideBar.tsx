@@ -69,7 +69,21 @@ export const DesktopSideBar = ({ navBarItems }: { navBarItems: NavbarItem[] }) =
                 }}
             >
                 <DrawerHeader>
-                    <Box sx={{ flex: 1, pl: 2, fontWeight: 800, letterSpacing: '0.12em', color: 'primary.main' }}>BIHON</Box>
+                    <Box
+                        component="img"
+                        src="/branding/bihon-wordmark.png"
+                        alt="Bihon"
+                        sx={{
+                            display: isCollapsed ? 'none' : 'block',
+                            flex: 1,
+                            ml: 1.5,
+                            mr: 1,
+                            width: 120,
+                            height: 42,
+                            objectFit: 'contain',
+                            objectPosition: 'left center',
+                        }}
+                    />
                     <IconButton onClick={() => setIsCollapsed(true)}>
                         {getOptionForDirection(<ChevronLeftIcon />, <ChevronRightIcon />)}
                     </IconButton>
