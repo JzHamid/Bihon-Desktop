@@ -183,10 +183,22 @@ export function Extensions({ tabsMenuHeight }: { tabsMenuHeight: number }) {
             handleExtensionUpdate();
         };
         window.addEventListener('bihon:extensions-ready', refresh);
-        window.bihon?.setupInfo().then((info) => {
-            if (active && !ready) setDefaultSetupPending(!info.defaultRepositoryReady);
-        }).catch(() => { if (active) setDefaultSetupPending(false); });
-        return () => { active = false; window.removeEventListener('bihon:extensions-ready', refresh); };
+        window.bihon
+            ?.setupInfo()
+            .then((info) => {
+                if (active && !ready) {
+                    setDefaultSetupPending(!info.defaultRepositoryReady);
+                }
+            })
+            .catch(() => {
+                if (active) {
+                    setDefaultSetupPending(false);
+                }
+            });
+        return () => {
+            active = false;
+            window.removeEventListener('bihon:extensions-ready', refresh);
+        };
     }, [refetchStores, handleExtensionUpdate]);
 
     const submitExternalExtension = (file: File) => {
@@ -284,7 +296,9 @@ export function Extensions({ tabsMenuHeight }: { tabsMenuHeight: number }) {
         return (
             <Stack role="status" sx={{ alignItems: 'center', gap: 1, p: 3 }}>
                 <Typography variant="h6">Preparing your extension list</Typography>
-                <Typography>Keiyoushi is set up automatically. Connect to the internet; Bihon will keep trying.</Typography>
+                <Typography>
+                    Keiyoushi is set up automatically. Connect to the internet; Bihon will keep trying.
+                </Typography>
             </Stack>
         );
     }

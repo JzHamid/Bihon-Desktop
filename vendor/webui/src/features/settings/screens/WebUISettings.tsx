@@ -35,11 +35,21 @@ import {
     WEB_UI_INTERFACE_SELECT_VALUES,
 } from '@/features/settings/Settings.constants.ts';
 
-export const WebUISettings = () => window.bihon ? (
-    <List><ListItem><ListItemText primary="Bihon desktop interface" secondary="Bihon includes a matched reader and engine. Install a new Bihon release to update them together. Automatic upstream UI replacement is disabled." /></ListItem></List>
-) : <StandaloneWebUISettings />;
+export const WebUISettings = () =>
+    window.bihon ? (
+        <List>
+            <ListItem>
+                <ListItemText
+                    primary="Bihon desktop interface"
+                    secondary="Bihon includes a matched reader and engine. Install a new Bihon release to update them together. Automatic upstream UI replacement is disabled."
+                />
+            </ListItem>
+        </List>
+    ) : (
+        <StandaloneWebUISettings />
+    );
 
-const StandaloneWebUISettings = () => {
+function StandaloneWebUISettings() {
     const { t } = useLingui();
 
     useAppTitle(t`WebUI`);
@@ -171,4 +181,4 @@ const StandaloneWebUISettings = () => {
             )}
         </List>
     );
-};
+}
