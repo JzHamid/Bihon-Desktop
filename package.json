@@ -10,6 +10,7 @@
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
     "build:ui": "node scripts/build-ui.cjs",
+    "verify:books": "node scripts/verify-books.cjs",
     "dist": "electron-builder --win nsis --x64",
     "source": "node scripts/source-archive.cjs",
     "release": "node scripts/release.cjs"
