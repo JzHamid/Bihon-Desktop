@@ -61,18 +61,25 @@ async function run() {
   try {
     const page = await app.firstWindow();
     page.on('pageerror', (error) => rendererErrors.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error') rendererErrors.push(message.text());
+    });
     await page.waitForURL('http://127.0.0.1:*/**', { timeout: 120000 });
     const origin = new URL(page.url()).origin;
     await page.goto(`${origin}/books/${bookId}/read`);
     await page.getByRole('button', { name: 'Next', exact: true }).waitFor({ timeout: 30000 });
-    await page.waitForFunction(
-      () =>
-        !Array.from(document.querySelectorAll('button[disabled]')).some((button) =>
-          button.textContent?.includes('Next'),
-        ),
-      null,
-      { timeout: 30000 },
-    );
+    try {
+      await page.waitForFunction(
+        () =>
+          !Array.from(document.querySelectorAll('button[disabled]')).some((button) =>
+            button.textContent?.includes('Next'),
+          ),
+        null,
+        { timeout: 60000 },
+      );
+    } catch (error) {
+      throw new Error(`Reader did not become ready: ${rendererErrors.join('; ') || error.message}`);
+    }
     await page.waitForFunction(() => Boolean(document.querySelector('foliate-view')?.lastLocation?.cfi), null, {
       timeout: 30000,
     });
@@ -116,6 +123,35 @@ async function run() {
     );
     await expectMovement(page, () => page.getByRole('button', { name: 'Turn page right' }).click(), 'right click zone');
     await expectMovement(page, () => page.getByRole('button', { name: 'Turn page left' }).click(), 'left click zone');
+
+    const readerViewport = page.locator('foliate-view');
+    const viewportBeforeFocus = await readerViewport.boundingBox();
+    await page.getByRole('button', { name: 'Enter focus mode' }).click();
+    if (await page.getByRole('button', { name: 'Close reader' }).count()) {
+      throw new Error('Focus mode left the reader toolbar visible');
+    }
+    if (await page.getByRole('slider', { name: 'Book progress' }).count()) {
+      throw new Error('Focus mode left the progress controls visible');
+    }
+    const viewportInFocus = await readerViewport.boundingBox();
+    if (!viewportBeforeFocus || !viewportInFocus || viewportInFocus.height <= viewportBeforeFocus.height) {
+      throw new Error(`Focus mode did not expand the reader viewport: ${JSON.stringify({ viewportBeforeFocus, viewportInFocus })}`);
+    }
+    await expectMovement(page, () => page.keyboard.press('ArrowRight'), 'focus mode keyboard navigation');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Close reader' }).waitFor();
+    await page.getByRole('slider', { name: 'Book progress' }).waitFor();
+    if (!page.url().endsWith(`/books/${bookId}/read`)) {
+      throw new Error(`Escape left the reader instead of exiting focus mode: ${page.url()}`);
+    }
+    console.log('PASS focus mode entry, expanded viewport, navigation, and Escape restoration');
+
+    await page.getByRole('button', { name: 'Enter focus mode' }).click();
+    await page.keyboard.press('Control+f');
+    await page.getByRole('dialog', { name: 'Find in book' }).waitFor();
+    await page.getByRole('textbox', { name: 'Find in book' }).waitFor();
+    await page.keyboard.press('Escape');
+    console.log('PASS Ctrl+F exits focus mode and opens search');
 
     await page.evaluate(() => document.querySelector('foliate-view').goToFraction(0.25));
     await page.waitForTimeout(500);

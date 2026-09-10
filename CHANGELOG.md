@@ -1,5 +1,10 @@
 ﻿# Changelog
 
+## 0.3.1
+
+- Add a session-only focus mode to the EPUB reader that hides its toolbar and progress controls, expands the reading area, and restores controls with Escape.
+- Open in-book search from focus mode with Ctrl+F while preserving the reader's existing panel and exit behavior.
+
 ## 0.3.0
 
 - Refresh Bihon branding across the Windows executable/installer, taskbar, startup page, WebUI icons, splash, sidebar, and About screen.

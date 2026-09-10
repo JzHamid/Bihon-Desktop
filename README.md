@@ -4,7 +4,7 @@ A local Windows manga, webtoon, and EPUB reader powered by Suwayomi and Foliate 
 
 ## Try it
 
-1. Run **Bihon Setup 0.3.0.exe** and open Bihon. The build is unsigned, so Windows may display an unsigned-app notice.
+1. Run **Bihon Setup 0.3.1.exe** and open Bihon. The build is unsigned, so Windows may display an unsigned-app notice.
 2. Open **Browse > Extensions**, find an extension, and install it. **Keiyoushi is added automatically** on first launch, including upgrades from 0.1.0. No repository URL needs to be pasted. If first launch is offline, setup retries while Bihon is open.
 3. Open **Browse > Sources**, select the installed source, and add a series to your library. Open a chapter to read online, or explicitly download it for offline reading.
 
@@ -22,7 +22,9 @@ Library cards show an amber warning when fetched chapter metadata contains inter
 
 Open **Books** to import DRM-free `.epub` files. Bihon preserves each original and keeps a verified managed copy under `Downloads\Bihon\Books`, with cached covers and progress in application data. The reader supports reflowable and fixed-layout EPUBs, contents, in-book search, paginated or scrolling flow, typography controls, light/dark/sepia themes, and CFI resume.
 
-**Books > Discover** includes Project Gutenberg and accepts unauthenticated legal OPDS 1.2/2.0 catalogs. Public catalogs require HTTPS. HTTP is limited to explicitly approved loopback/private-network catalogs. Bihon 0.3.0 does not support DRM bypass, storefront purchases, authenticated catalogs, or unauthorized copyrighted-book downloads.
+Use the reader's **Focus mode** button to hide the toolbar and progress controls and expand the book to the full window. Press **Escape** to restore the controls; press it again to leave the reader. **Ctrl+F** restores the controls and opens in-book search.
+
+**Books > Discover** includes Project Gutenberg and accepts unauthenticated legal OPDS 1.2/2.0 catalogs. Public catalogs require HTTPS. HTTP is limited to explicitly approved loopback/private-network catalogs. Bihon 0.3.1 does not support DRM bypass, storefront purchases, authenticated catalogs, or unauthorized copyrighted-book downloads.
 
 ## Storage and backups
 
@@ -34,7 +36,7 @@ Library, reading progress, extensions, and settings live in `%LOCALAPPDATA%\Biho
 
 Close Bihon and run the newer installer **over the existing installation**. No uninstall or repository setup is needed. Your library and downloads stay in their existing locations. Before a newer version opens an existing library, Bihon creates and verifies a snapshot of the closed database, settings, and installed extensions. Find it using **Help > Open upgrade backups**.
 
-Share the installer together with `Bihon-0.3.0-source.zip` and the included notices. See [UPDATING.md](UPDATING.md) for checks and recovery instructions, [VERIFICATION.md](VERIFICATION.md) for tested behavior and remaining limits, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for licenses. GitHub remains private; source-code pushes do not automatically install a new version on friends' PCs.
+Share the installer together with `Bihon-0.3.1-source.zip` and the included notices. See [UPDATING.md](UPDATING.md) for checks and recovery instructions, [VERIFICATION.md](VERIFICATION.md) for tested behavior and remaining limits, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for licenses. GitHub remains private; source-code pushes do not automatically install a new version on friends' PCs.
 
 ## Build on Windows
 

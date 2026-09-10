@@ -1,7 +1,8 @@
-# Verification: Bihon 0.3.0
+# Verification: Bihon 0.3.1
 
-Built on Windows 11, 2026-09-08.
+Built on Windows 11, 2026-09-10.
 
+- Version 0.3.1 EPUB focus mode passed entry, viewport expansion, keyboard navigation, Escape restoration, and focus-aware Ctrl+F checks.
 - Root unit tests passed for EPUB import and duplicate detection, managed-copy deletion, metadata sanitization, progress bounds, invalid archive cleanup, OPDS URL/network policy, redirect revalidation, response limits, OPDS 1.2/2.0 transport, chapter-gap edge cases, download migration, repository setup, and upgrade snapshots.
 - WebUI TypeScript checks and the production build passed with the pinned, locally patched Foliate JS revision.
 - A live Project Gutenberg smoke test loaded its official OPDS 1.2 feed and acquired a real public-domain EPUB through Bihon's guarded catalog service. The downloaded fixture and all other test data remain ignored local files.
