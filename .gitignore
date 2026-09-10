@@ -1,6 +1,7 @@
 node_modules/
+/.pnpm-store/
 runtime/
-downloads/
+/downloads/
 dist/
 artifacts/
 .test-data/

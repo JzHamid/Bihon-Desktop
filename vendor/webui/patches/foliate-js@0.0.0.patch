@@ -58,3 +58,9 @@ index 7980c20297049e38b5e5a1d44a9eee11b1fbd68e..db352f1ba0fa53c85e598738a75bb878
          this.#iframe.setAttribute('scrolling', 'no')
      }
      get element() {
+diff --git a/pdf.js b/pdf.js
+--- a/pdf.js
++++ b/pdf.js
+@@ -1 +1 @@
+-const pdfjsPath = path => new URL(`vendor/pdfjs/${path}`, import.meta.url).toString()
++const pdfjsPath = path => new URL(`./vendor/pdfjs/${path}`, import.meta.url).toString()

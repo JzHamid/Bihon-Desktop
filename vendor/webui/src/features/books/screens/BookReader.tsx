@@ -8,6 +8,7 @@
 
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import ClearIcon from '@mui/icons-material/Clear';
 import CloseIcon from '@mui/icons-material/Close';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
@@ -248,6 +249,7 @@ export function BookReader() {
     const saveTimer = useRef<number | undefined>(undefined);
     const settingsRef = useRef<ReaderSettings>(DEFAULT_SETTINGS);
     const panelRef = useRef<ReaderPanel>(null);
+    const focusModeRef = useRef(false);
     const illustrationRef = useRef(false);
     const searchRun = useRef(0);
     const activeAnnotation = useRef<{ value: string; kind: string } | undefined>(undefined);
@@ -257,6 +259,7 @@ export function BookReader() {
     const [ready, setReady] = useState(false);
     const [fixedLayout, setFixedLayout] = useState(false);
     const [panel, setPanel] = useState<ReaderPanel>(null);
+    const [focusMode, setFocusMode] = useState(false);
     const [settings, setSettings] = useState(loadSettings);
     const [location, setLocation] = useState<FoliateLocation>({ fraction: 0 });
     const [seekValue, setSeekValue] = useState<number>();
@@ -268,6 +271,7 @@ export function BookReader() {
     const [activeHit, setActiveHit] = useState(-1);
     settingsRef.current = settings;
     panelRef.current = panel;
+    focusModeRef.current = focusMode;
 
     const updateSettings = useCallback((update: Partial<ReaderSettings>) => {
         setSettings((current) => ({ ...current, ...update }));
@@ -295,6 +299,8 @@ export function BookReader() {
     const closeOrExit = useCallback(() => {
         if (panelRef.current) {
             setPanel(null);
+        } else if (focusModeRef.current) {
+            setFocusMode(false);
         } else {
             navigate(AppRoutes.books.path);
         }
@@ -323,6 +329,7 @@ export function BookReader() {
     keyHandler.current = (event) => {
         if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'f') {
             event.preventDefault();
+            setFocusMode(false);
             setPanel('search');
             return;
         }
@@ -552,54 +559,61 @@ export function BookReader() {
                 '--reader-header-height': '64px',
             }}
         >
-            <Stack
-                direction="row"
-                spacing={1}
-                sx={{
-                    minHeight: 'var(--reader-header-height)',
-                    px: 1.5,
-                    bgcolor: 'background.paper',
-                    color: 'text.primary',
-                    alignItems: 'center',
-                    zIndex: 4,
-                }}
-            >
-                <Tooltip title="Close reader (Esc)">
-                    <IconButton aria-label="Close reader" onClick={() => navigate(AppRoutes.books.path)}>
-                        <CloseIcon />
-                    </IconButton>
-                </Tooltip>
-                <Typography noWrap sx={{ minWidth: 0, flex: 1, fontWeight: 600 }}>
-                    {book?.title ?? 'Opening EPUB…'}
-                </Typography>
-                <Tooltip title="Contents">
-                    <IconButton
-                        aria-label="Contents"
-                        color={panel === 'contents' ? 'primary' : 'default'}
-                        onClick={() => setPanel(panel === 'contents' ? null : 'contents')}
-                    >
-                        <MenuBookIcon />
-                    </IconButton>
-                </Tooltip>
-                <Tooltip title="Find in book (Ctrl+F)">
-                    <IconButton
-                        aria-label="Find in book"
-                        color={panel === 'search' ? 'primary' : 'default'}
-                        onClick={() => setPanel(panel === 'search' ? null : 'search')}
-                    >
-                        <SearchIcon />
-                    </IconButton>
-                </Tooltip>
-                <Tooltip title="Appearance">
-                    <IconButton
-                        aria-label="Appearance"
-                        color={panel === 'appearance' ? 'primary' : 'default'}
-                        onClick={() => setPanel(panel === 'appearance' ? null : 'appearance')}
-                    >
-                        <TuneIcon />
-                    </IconButton>
-                </Tooltip>
-            </Stack>
+            {!focusMode && (
+                <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                        minHeight: 'var(--reader-header-height)',
+                        px: 1.5,
+                        bgcolor: 'background.paper',
+                        color: 'text.primary',
+                        alignItems: 'center',
+                        zIndex: 4,
+                    }}
+                >
+                    <Tooltip title="Close reader (Esc)">
+                        <IconButton aria-label="Close reader" onClick={() => navigate(AppRoutes.books.path)}>
+                            <CloseIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Typography noWrap sx={{ minWidth: 0, flex: 1, fontWeight: 600 }}>
+                        {book?.title ?? 'Opening EPUB…'}
+                    </Typography>
+                    <Tooltip title="Contents">
+                        <IconButton
+                            aria-label="Contents"
+                            color={panel === 'contents' ? 'primary' : 'default'}
+                            onClick={() => setPanel(panel === 'contents' ? null : 'contents')}
+                        >
+                            <MenuBookIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Find in book (Ctrl+F)">
+                        <IconButton
+                            aria-label="Find in book"
+                            color={panel === 'search' ? 'primary' : 'default'}
+                            onClick={() => setPanel(panel === 'search' ? null : 'search')}
+                        >
+                            <SearchIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Appearance">
+                        <IconButton
+                            aria-label="Appearance"
+                            color={panel === 'appearance' ? 'primary' : 'default'}
+                            onClick={() => setPanel(panel === 'appearance' ? null : 'appearance')}
+                        >
+                            <TuneIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Focus mode (Esc to exit)">
+                        <IconButton aria-label="Enter focus mode" onClick={() => setFocusMode(true)}>
+                            <CenterFocusStrongIcon />
+                        </IconButton>
+                    </Tooltip>
+                </Stack>
+            )}
 
             <Box sx={{ position: 'relative', flex: 1, minHeight: 0 }}>
                 <Box
@@ -634,44 +648,46 @@ export function BookReader() {
                 )}
             </Box>
 
-            <Stack
-                direction="row"
-                spacing={1.5}
-                sx={{
-                    minHeight: 58,
-                    px: 1.5,
-                    bgcolor: 'background.paper',
-                    color: 'text.primary',
-                    alignItems: 'center',
-                    zIndex: 4,
-                }}
-            >
-                <Button size="small" startIcon={<ArrowBackIcon />} onClick={goPrevious} disabled={!ready}>
-                    Previous
-                </Button>
-                <Stack spacing={0} sx={{ flex: 1, minWidth: 120 }}>
-                    <Slider
-                        size="small"
-                        aria-label="Book progress"
-                        value={(seekValue ?? location.fraction ?? 0) * 100}
-                        min={0}
-                        max={100}
-                        onChange={(_, value) => setSeekValue((value as number) / 100)}
-                        onChangeCommitted={(_, value) => {
-                            const element = view.current;
-                            if (element) {
-                                navigateSafely(() => element.goToFraction((value as number) / 100));
-                            }
-                        }}
-                    />
-                    <Typography variant="caption" noWrap sx={{ textAlign: 'center', mt: -0.75 }}>
-                        {[location.tocItem?.label, locationLabel, `${percent}%`].filter(Boolean).join(' · ')}
-                    </Typography>
+            {!focusMode && (
+                <Stack
+                    direction="row"
+                    spacing={1.5}
+                    sx={{
+                        minHeight: 58,
+                        px: 1.5,
+                        bgcolor: 'background.paper',
+                        color: 'text.primary',
+                        alignItems: 'center',
+                        zIndex: 4,
+                    }}
+                >
+                    <Button size="small" startIcon={<ArrowBackIcon />} onClick={goPrevious} disabled={!ready}>
+                        Previous
+                    </Button>
+                    <Stack spacing={0} sx={{ flex: 1, minWidth: 120 }}>
+                        <Slider
+                            size="small"
+                            aria-label="Book progress"
+                            value={(seekValue ?? location.fraction ?? 0) * 100}
+                            min={0}
+                            max={100}
+                            onChange={(_, value) => setSeekValue((value as number) / 100)}
+                            onChangeCommitted={(_, value) => {
+                                const element = view.current;
+                                if (element) {
+                                    navigateSafely(() => element.goToFraction((value as number) / 100));
+                                }
+                            }}
+                        />
+                        <Typography variant="caption" noWrap sx={{ textAlign: 'center', mt: -0.75 }}>
+                            {[location.tocItem?.label, locationLabel, `${percent}%`].filter(Boolean).join(' · ')}
+                        </Typography>
+                    </Stack>
+                    <Button size="small" endIcon={<ArrowForwardIcon />} onClick={goNext} disabled={!ready}>
+                        Next
+                    </Button>
                 </Stack>
-                <Button size="small" endIcon={<ArrowForwardIcon />} onClick={goNext} disabled={!ready}>
-                    Next
-                </Button>
-            </Stack>
+            )}
 
             {panel && (
                 <>

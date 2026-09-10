@@ -11,6 +11,6 @@ Bihon is an independent desktop adaptation of Suwayomi WebUI, powered by an unmo
 
 Changes: Bihon branding, native desktop folder selection, verified download migration, Windows process ownership, EPUB/OPDS support, packaging, tests, and documentation. Existing source headers and licenses are retained. Bihon additions are MPL-2.0.
 
-Distribute Bihon-0.3.0-source.zip alongside Bihon Setup 0.3.0.exe. The source archive includes the corresponding modified MPL-covered source and build instructions. Recipients may exercise the rights granted by those licenses. Your private GitHub repository does not need to be public.
+Distribute Bihon-0.3.1-source.zip alongside Bihon Setup 0.3.1.exe. The source archive includes the corresponding modified MPL-covered source and build instructions. Recipients may exercise the rights granted by those licenses. Your private GitHub repository does not need to be public.
 
-Bihon 0.3.0 additions: refreshed branding, Escape reader exit, cached chapter-gap badges, local EPUB books, the hardened Foliate reader, and legal OPDS discovery. The default Keiyoushi repository URL and Project Gutenberg OPDS catalog are registered automatically; third-party extension binaries and book/comic content are not bundled.
+Bihon 0.3.1 additions: session-only EPUB focus mode with Escape restoration and focus-aware in-book search. The default Keiyoushi repository URL and Project Gutenberg OPDS catalog are registered automatically; third-party extension binaries and book/comic content are not bundled.
