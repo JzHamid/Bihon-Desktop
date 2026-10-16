@@ -3,3 +3,4 @@
 *.md text eol=lf
 *.yml text eol=lf
 *.json text eol=lf
+*.kt text eol=lf

@@ -4,6 +4,8 @@ Bihon Android is the native Android reader based on [Mihon v0.21.2](https://gith
 
 The native reader supports manga, webtoons, local comic archives, extensions, downloads, backups and self-hosted tracking. The desktop EPUB reader and desktop data folder are separate; this Android build does not add native EPUB support or automatic desktop synchronization.
 
+Keiyoushi is added automatically once on first launch, including offline launches, using its pinned native store URL and published signing identity. Open **Browse > Extensions** after connecting to the internet to fetch available extensions. Existing stores are preserved, repeated launches do not add duplicates, and removing Keiyoushi later is respected. Extensions are installed only when you choose them, using Android's normal installation confirmation and signature verification.
+
 To move an existing Android library, create a `.tachibk` backup in the old app first, then restore it through Bihon's backup settings. Keep the original backup and app until you have checked your library and reading progress. Existing download folders must be selected explicitly through Android's storage picker.
 
 ## Upstream improvements
@@ -39,7 +41,7 @@ The release source archive contains the entire patched upstream source, Gradle w
 
 ## Verification
 
-Run `node --test tests/android-build.test.cjs` for the source-integrity, path-preservation, version and signing gates. CI runs the actual Gradle unit tests, SQLDelight migration verification and APK build. `node scripts/android-smoke.cjs` installs and launches the APK on a fresh emulator, checks that onboarding renders and the process remains foreground, and collects a screenshot, UI dump and logcat under `artifacts/android-smoke/`. It refuses to overwrite an existing emulator installation.
+Run `node --test tests/android-build.test.cjs tests/android-store-smoke.test.cjs` for the source-integrity, path-preservation, version, signing and store-evidence gates. CI runs the actual Gradle unit tests, SQLDelight migration verification and APK build. `node scripts/android-smoke.cjs` installs and launches the APK on a fresh emulator, checks onboarding and foreground process stability, then inspects the stopped app's database and preferences to verify the Keiyoushi URL, signing identity and one-time setup marker. It restarts the app and checks the same persisted store without duplicates. A screenshot, UI dump, public store evidence and logcat are collected under `artifacts/android-smoke/`. This requires a rooted disposable emulator and refuses physical devices or an existing Bihon installation.
 
 Emulator startup checks do not establish physical-device behavior, third-party extension availability or authenticated tracker behavior. Those depend on the device, source and user account.
 
