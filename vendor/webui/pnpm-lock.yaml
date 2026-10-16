@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  foliate-js@0.0.0: 17f808fda2c554549c0704ba0fe978aacf03e4749639154172315ac92bab7a2f
+  foliate-js@0.0.0: ec32d5a41ba8e67be10228c15b529bc22016660007df6cffaf9ecfed8bff20b8
 
 importers:
 
@@ -91,7 +91,7 @@ importers:
         version: 2.1.2
       foliate-js:
         specifier: github:johnfactotum/foliate-js#78914aef4466eb960965702401634c2cb348e9b1
-        version: https://codeload.github.com/johnfactotum/foliate-js/tar.gz/78914aef4466eb960965702401634c2cb348e9b1(patch_hash=17f808fda2c554549c0704ba0fe978aacf03e4749639154172315ac92bab7a2f)
+        version: https://codeload.github.com/johnfactotum/foliate-js/tar.gz/78914aef4466eb960965702401634c2cb348e9b1(patch_hash=ec32d5a41ba8e67be10228c15b529bc22016660007df6cffaf9ecfed8bff20b8)
       graphql:
         specifier: 16.14.0
         version: 16.14.0
@@ -9268,7 +9268,7 @@ snapshots:
 
   flatted@3.4.2: {}
 
-  foliate-js@https://codeload.github.com/johnfactotum/foliate-js/tar.gz/78914aef4466eb960965702401634c2cb348e9b1(patch_hash=17f808fda2c554549c0704ba0fe978aacf03e4749639154172315ac92bab7a2f): {}
+  foliate-js@https://codeload.github.com/johnfactotum/foliate-js/tar.gz/78914aef4466eb960965702401634c2cb348e9b1(patch_hash=ec32d5a41ba8e67be10228c15b529bc22016660007df6cffaf9ecfed8bff20b8): {}
 
   for-each@0.3.5:
     dependencies:

@@ -37,6 +37,8 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb libgtk-3-0 libnss3 libxss1 libxtst6 libgbm1 libasound2t64 libnotify4
       - run: npm ci --no-audit --no-fund
+      - name: Verify source checkout is clean
+        run: git status --short
       - name: Tests, lint, typecheck, production UI, native packages, source, checksums
         run: npm run release
         env:
@@ -98,10 +100,12 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
       - name: Fetch and verify pinned Mihon; apply Bihon changes
         run: node scripts/android-prepare.cjs
       - name: Install pinned Android SDK and NDK
-        run: sdkmanager 'platforms;android-37.2' 'ndk;29.0.14206865'
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.2" "ndk;29.0.14206865"'
       - name: Prepare authorized release key
         if: env.BIHON_ANDROID_RELEASE == 'true'
         env:
@@ -169,8 +173,8 @@ jobs:
           API: ${{ matrix.api }}
         run: |
           sudo chmod 666 /dev/kvm
-          sdkmanager "system-images;android-$API;google_apis;x86_64" platform-tools emulator
-          echo no | avdmanager create avd --name bihon-ci --package "system-images;android-$API;google_apis;x86_64" --force
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "system-images;android-$API;google_apis;x86_64" platform-tools emulator
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name bihon-ci --package "system-images;android-$API;google_apis;x86_64" --force
           mkdir -p artifacts/android-smoke
           nohup "$ANDROID_HOME/emulator/emulator" -avd bihon-ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect >artifacts/android-smoke/emulator.log 2>&1 &
           adb wait-for-device

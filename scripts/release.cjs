@@ -5,7 +5,7 @@ const { root, node, env, run } = require('./toolchain.cjs');
 const version = require('../package.json').version;
 
 const status = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8', windowsHide: true });
-if (status.status !== 0 || status.stdout.trim()) throw new Error('Commit the version and source changes before building a shareable release.');
+if (status.status !== 0 || status.stdout.trim()) throw new Error(`Commit the version and source changes before building a shareable release.\n${status.stdout || status.stderr || status.error || ''}`);
 if (!['win32', 'linux'].includes(process.platform) || process.arch !== 'x64') throw new Error('Desktop releases currently support Windows x64 and Linux x64.');
 Object.assign(env, { ELECTRON_BUILDER_CACHE: path.join(root, 'downloads/builder-cache'), ELECTRON_CACHE: path.join(root, 'downloads/electron-cache') });
 run(node, ['scripts/bootstrap.cjs', '--skip-install', '--skip-ui']);

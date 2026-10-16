@@ -87,6 +87,8 @@ test('source archive contains the clean committed source and refuses to replace 
   git(['config', 'core.autocrlf', 'false']);
   git(['add', '--all']);
   git(['commit', '--quiet', '-m', 'Synthetic release fixture']);
+  // A maintainer's Windows checkout preference must not change archive bytes.
+  git(['config', 'core.autocrlf', 'true']);
   const script = path.join(directory, 'scripts/source-archive.cjs');
   const build = () => spawnSync(process.execPath, [script], { cwd: directory, encoding: 'utf8', windowsHide: true });
   const clean = build();
