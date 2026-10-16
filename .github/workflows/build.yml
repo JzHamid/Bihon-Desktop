@@ -178,15 +178,23 @@ jobs:
         run: |
           sudo chmod 666 /dev/kvm
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "system-images;android-$API;google_apis;x86_64" platform-tools emulator
-          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name bihon-ci --package "system-images;android-$API;google_apis;x86_64" --force
-          mkdir -p artifacts/android-smoke
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/bihon-avd"
+          mkdir -p "$ANDROID_AVD_HOME" artifacts/android-smoke
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name bihon-ci --path "$ANDROID_AVD_HOME/bihon-ci.avd" --package "system-images;android-$API;google_apis;x86_64" --force
+          "$ANDROID_HOME/emulator/emulator" -list-avds > artifacts/android-smoke/avds.txt
+          grep -Fx 'bihon-ci' artifacts/android-smoke/avds.txt
           nohup "$ANDROID_HOME/emulator/emulator" -avd bihon-ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect >artifacts/android-smoke/emulator.log 2>&1 &
-          "$ANDROID_HOME/platform-tools/adb" wait-for-device
+          bihon_emulator_pid=$!
+          bihon_emulator_failed() { cat artifacts/android-smoke/emulator.log; exit 1; }
+          sleep 2
+          kill -0 "$bihon_emulator_pid" || bihon_emulator_failed
+          timeout 180 "$ANDROID_HOME/platform-tools/adb" wait-for-device || bihon_emulator_failed
           for attempt in $(seq 1 120); do
+            kill -0 "$bihon_emulator_pid" || bihon_emulator_failed
             if [ "$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed | tr -d '\r')" = '1' ]; then exit 0; fi
             sleep 2
           done
-          exit 1
+          bihon_emulator_failed
       - name: Install, launch, and check for crashes
         run: node scripts/android-smoke.cjs dist/*.apk
       - uses: actions/upload-artifact@v4
