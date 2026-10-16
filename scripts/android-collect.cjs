@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { root, defaultDirectory, upstream, verifyPrepared, androidVersionCode, run, hash } = require('./android-prepare.cjs');
+const { root, defaultDirectory, upstream, verifyPrepared, androidVersionCode, hash } = require('./android-prepare.cjs');
+const { findAndroidTool, runAndroidTool } = require('./android-sdk.cjs');
 
 function normalizeFingerprint(value) {
   const fingerprint = value.replace(/:/g, '').trim().toLowerCase();
@@ -8,16 +9,23 @@ function normalizeFingerprint(value) {
   return fingerprint;
 }
 
-function findAndroidTool(name) {
-  const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
-  if (!sdk) throw new Error('ANDROID_HOME or ANDROID_SDK_ROOT is required');
-  if (name === 'apkanalyzer') return path.join(sdk, 'cmdline-tools', 'latest', 'bin', name);
-  const versions = fs.readdirSync(path.join(sdk, 'build-tools')).filter(value => /^\d+\.\d+\.\d+$/.test(value)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  if (!versions.length) throw new Error('Android SDK build-tools are missing');
-  return path.join(sdk, 'build-tools', versions.at(-1), name);
+function signerCertificates(signature) {
+  // AOSP ApkSignerTool.verify prints numbered signers for v1/v2/v3 and
+  // SDK-range labels for v3.1. The same identity may be printed for both ranges.
+  // Source: android.googlesource.com/platform/tools/apksig/+/refs/heads/main/
+  // src/apksigner/java/com/android/apksigner/ApkSignerTool.java (verify method).
+  const label = '(?:#\\d+|\\(minSdkVersion=\\d+(?: \\(dev release=true\\))?, maxSdkVersion=\\d+\\))';
+  const text = signature.replace(/\r\n/g, '\n');
+  const count = text.match(/^Number of signers: (\d+)$/m);
+  if (count && Number(count[1]) !== 1) throw new Error('APK must have exactly one verified signing certificate');
+  const digests = [...text.matchAll(new RegExp(`^Signer ${label} certificate SHA-256 digest: ([a-fA-F0-9:]+)$`, 'gm'))].map(match => normalizeFingerprint(match[1]));
+  const subjects = [...text.matchAll(new RegExp(`^Signer ${label} certificate DN: (.+)$`, 'gm'))].map(match => match[1]);
+  const identities = [...new Set(digests)];
+  if (identities.length !== 1 || subjects.length !== digests.length) throw new Error('APK must have exactly one verified signing certificate');
+  return { fingerprint: identities[0], subjects };
 }
 
-function verifyApk(apk, fingerprint, execute = run, tools = {}, testBuild = false) {
+function verifyApk(apk, fingerprint, execute = runAndroidTool, tools = {}, testBuild = false) {
   const version = require('../package.json').version;
   const analyzer = tools.apkanalyzer || findAndroidTool('apkanalyzer');
   const signer = tools.apksigner || findAndroidTool('apksigner');
@@ -27,11 +35,10 @@ function verifyApk(apk, fingerprint, execute = run, tools = {}, testBuild = fals
   if (manifest('version-code') !== String(androidVersionCode(version))) throw new Error('APK has the wrong versionCode');
   if (manifest('min-sdk') !== String(upstream.minimumAndroidApi)) throw new Error('APK has the wrong minimum Android API');
   const signature = execute(signer, ['verify', '--verbose', '--print-certs', apk]);
-  const digests = [...signature.matchAll(/Signer #\d+ certificate SHA-256 digest:\s*([a-fA-F0-9:]+)/g)].map(match => normalizeFingerprint(match[1]));
-  if (digests.length !== 1) throw new Error('APK must have exactly one verified signing certificate');
-  if (testBuild && !/Signer #1 certificate DN:.*CN=Android Debug(?:,|$)/m.test(signature)) throw new Error('Test APK must use the disposable Android Debug signing identity');
-  if ((!testBuild || fingerprint) && digests[0] !== normalizeFingerprint(fingerprint)) throw new Error('APK signing certificate does not match the expected persistent Bihon identity');
-  return { applicationId: upstream.applicationId, version, versionCode: androidVersionCode(version), minimumAndroidApi: upstream.minimumAndroidApi, certificateSha256: digests[0] };
+  const certificates = signerCertificates(signature);
+  if (testBuild && !certificates.subjects.every(subject => /(?:^|,\s*)CN=Android Debug(?:,|$)/.test(subject))) throw new Error('Test APK must use the disposable Android Debug signing identity');
+  if ((!testBuild || fingerprint) && certificates.fingerprint !== normalizeFingerprint(fingerprint)) throw new Error('APK signing certificate does not match the expected persistent Bihon identity');
+  return { applicationId: upstream.applicationId, version, versionCode: androidVersionCode(version), minimumAndroidApi: upstream.minimumAndroidApi, certificateSha256: certificates.fingerprint };
 }
 
 function collect({ directory = defaultDirectory, certificateSha256, testBuild = false } = {}) {
@@ -39,7 +46,16 @@ function collect({ directory = defaultDirectory, certificateSha256, testBuild = 
   const version = require('../package.json').version;
   verifyPrepared(directory, version);
   const apk = path.join(directory, 'app/build/outputs/apk/release/app-universal-release.apk');
-  const metadata = verifyApk(apk, certificateSha256, run, {}, testBuild);
+  const execute = (command, args) => {
+    const output = runAndroidTool(command, args);
+    if (args.includes('--print-certs')) {
+      const evidence = path.join(root, 'artifacts/android-apk-signature.txt');
+      fs.mkdirSync(path.dirname(evidence), { recursive: true });
+      fs.writeFileSync(evidence, output);
+    }
+    return output;
+  };
+  const metadata = verifyApk(apk, certificateSha256, execute, {}, testBuild);
   const target = path.join(root, 'dist', `Bihon-Android-${version}${testBuild ? '-test' : ''}.apk`);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.copyFileSync(apk, target);
@@ -59,4 +75,4 @@ if (require.main === module) {
   }
   collect(options);
 }
-module.exports = { collect, verifyApk, normalizeFingerprint };
+module.exports = { collect, verifyApk, normalizeFingerprint, signerCertificates };

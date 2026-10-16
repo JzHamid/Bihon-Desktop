@@ -132,6 +132,7 @@ function patchSource(directory, version) {
     android:gravity="fill" />
 `);
   changed.push('app/src/main/res/drawable/bihon_mark.png', 'app/src/main/res/mipmap/ic_launcher.xml');
+  replace('app/src/main/res/drawable/ic_mihon_splash.xml', '@drawable/ic_mihon', '@drawable/bihon_mark');
   update('app/src/main/java/eu/kanade/presentation/more/LogoHeader.kt', text => {
     text = replaceOnce(text, 'import androidx.compose.foundation.layout.Column', 'import androidx.compose.foundation.Image\nimport androidx.compose.foundation.layout.Column', 'LogoHeader.kt');
     text = replaceOnce(text, 'import androidx.compose.material3.Icon\n', '', 'LogoHeader.kt');

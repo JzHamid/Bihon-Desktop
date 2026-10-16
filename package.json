@@ -2,7 +2,7 @@
   "name": "bihon-desktop",
   "version": "0.4.0",
   "private": true,
-  "description": "A local manga, webtoon, and EPUB reader for Windows and Linux, with a native Android companion",
+  "description": "A local manga, webtoon, and EPUB reader for Windows and Linux, with a native Android build",
   "author": "JzHamid",
   "license": "MPL-2.0",
   "main": "desktop/main.cjs",

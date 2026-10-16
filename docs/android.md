@@ -33,6 +33,8 @@ node scripts/android-source.cjs
 
 For release signing, provide a persistent private Bihon keystore outside tracked source. Set `BIHON_ANDROID_RELEASE=true`, `BIHON_ANDROID_KEYSTORE_PATH`, `BIHON_ANDROID_KEYSTORE_PASSWORD`, `BIHON_ANDROID_KEY_ALIAS` and `BIHON_ANDROID_KEY_PASSWORD` while running Gradle. Then run `node scripts/android-collect.cjs --certificate-sha256 EXPECTED_PUBLIC_CERTIFICATE_DIGEST`. Collection verifies the APK's signature, signer fingerprint, application ID, version and minimum Android API before naming a production artifact. All future updates must use the same signing key; changing it prevents an in-place Android upgrade.
 
+Production signing in Actions uses the manually dispatched **Signed Android package** workflow, restricted to `main` after successful platform checks for that exact commit. Create an `android-release` environment restricted to `main`, enable owner approval, and store `BIHON_ANDROID_KEYSTORE_BASE64`, `BIHON_ANDROID_KEYSTORE_PASSWORD`, `BIHON_ANDROID_KEY_ALIAS` and `BIHON_ANDROID_KEY_PASSWORD` there. Do not use repository-level signing secrets: same-repository PR workflows can request those. Commit only the public certificate SHA-256 to `android/signing-certificate.sha256`. Routine builds and PRs always use disposable test signing and receive no release credentials.
+
 The release source archive contains the entire patched upstream source, Gradle wrapper, licenses, provenance and build instructions. Generated caches, APKs and signing material are excluded. It is distinct from the desktop MPL-2.0 source archive because Mihon is Apache-2.0 licensed.
 
 ## Verification

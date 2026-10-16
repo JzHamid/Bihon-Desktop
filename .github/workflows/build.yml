@@ -82,6 +82,7 @@ jobs:
           path: artifacts/
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: desktop-${{ runner.os }}
           path: |
@@ -99,7 +100,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      BIHON_ANDROID_RELEASE: ${{ secrets.BIHON_ANDROID_KEYSTORE_BASE64 != '' && 'true' || 'false' }}
+      # PR and routine CI code only ever use disposable test signing.
+      BIHON_ANDROID_RELEASE: 'false'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -118,27 +120,11 @@ jobs:
         run: node scripts/android-prepare.cjs
       - name: Install pinned Android SDK and NDK
         run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.2" "ndk;29.0.14206865"'
-      - name: Prepare authorized release key
-        if: env.BIHON_ANDROID_RELEASE == 'true'
-        env:
-          KEYSTORE_BASE64: ${{ secrets.BIHON_ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          mkdir -p .build/signing
-          node -e "require('fs').writeFileSync('.build/signing/bihon.jks', Buffer.from(process.env.KEYSTORE_BASE64, 'base64'), {mode: 0o600})"
       - name: Unit tests, database migration checks, and universal APK
         working-directory: .build/android
-        env:
-          BIHON_ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/.build/signing/bihon.jks
-          BIHON_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.BIHON_ANDROID_KEYSTORE_PASSWORD }}
-          BIHON_ANDROID_KEY_ALIAS: ${{ secrets.BIHON_ANDROID_KEY_ALIAS }}
-          BIHON_ANDROID_KEY_PASSWORD: ${{ secrets.BIHON_ANDROID_KEY_PASSWORD }}
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest verifySqlDelightMigration assembleRelease -Pdist=foss -Pinclude-telemetry=false -Penable-updater=false
       - name: Collect and verify test APK
-        if: env.BIHON_ANDROID_RELEASE != 'true'
         run: node scripts/android-collect.cjs --test-build
-      - name: Collect and verify production APK
-        if: env.BIHON_ANDROID_RELEASE == 'true'
-        run: node scripts/android-collect.cjs --certificate-sha256 "$(cat android/signing-certificate.sha256)"
       - name: Corresponding Android source
         run: node scripts/android-source.cjs
       - uses: actions/upload-artifact@v4
@@ -148,13 +134,16 @@ jobs:
           path: |
             .build/android/**/build/reports/
             .build/android/**/build/test-results/
+            .build/android/app/build/outputs/apk/release/app-universal-release.apk
             artifacts/
           if-no-files-found: ignore
+          include-hidden-files: true
       - uses: actions/upload-artifact@v4
         with:
           name: android
           path: |
             dist/*.apk
+            dist/*.apk.json
             dist/*source.tar.gz
           if-no-files-found: error
 

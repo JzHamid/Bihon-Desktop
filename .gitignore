@@ -14,6 +14,7 @@ desktop/java/*.class
 /.build/
 *.keystore
 *.jks
+*.p12
 /release-keys/
 .env
 .env.*

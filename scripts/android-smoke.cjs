@@ -1,15 +1,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { setTimeout: sleep } = require('node:timers/promises');
-const { root, upstream, defaultDirectory, run } = require('./android-prepare.cjs');
+const { root, upstream, defaultDirectory } = require('./android-prepare.cjs');
+const { findAndroidTool, runAndroidTool } = require('./android-sdk.cjs');
 
 // Run against a disposable emulator. Never clear or uninstall an existing user's app.
 async function smoke(apk = path.join(defaultDirectory, 'app/build/outputs/apk/release/app-universal-release.apk')) {
-  const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
-  const adb = sdk ? path.join(sdk, 'platform-tools', 'adb') : 'adb';
+  const adb = findAndroidTool('adb');
   const output = path.join(root, 'artifacts/android-smoke');
   fs.mkdirSync(output, { recursive: true });
-  const command = args => run(adb, args);
+  const command = args => runAndroidTool(adb, args);
   const appId = upstream.applicationId;
   const before = command(['shell', 'pm', 'list', 'packages', appId]);
   if (before.split(/\r?\n/).some(line => line.trim() === `package:${appId}`)) throw new Error('Android smoke requires a fresh emulator without Bihon installed');

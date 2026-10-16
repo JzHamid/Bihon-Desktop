@@ -30,7 +30,7 @@ module.exports = {
     target: ['AppImage', 'deb'],
     executableName: 'bihon',
     category: 'Graphics',
-    icon: 'desktop/assets/icons',
+    icon: 'desktop/assets/bihon-icon.png',
     artifactName: 'Bihon-${version}-${arch}.${ext}',
     maintainer: 'JzHamid',
     synopsis: 'Local manga, webtoon, and EPUB reader',

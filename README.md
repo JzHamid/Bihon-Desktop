@@ -5,7 +5,7 @@ A local manga and webtoon reader for **Windows, Linux, and Android**. Desktop al
 | Platform | Package | Engine | Library data |
 | --- | --- | --- | --- |
 | Windows x64 | `Bihon-Setup-0.4.0-x64.exe` | Bundled Suwayomi, Java, Electron | `%LOCALAPPDATA%\Bihon` |
-| Linux x64 | `Bihon-0.4.0-x64.AppImage` or `.deb` | Bundled Suwayomi, Java, Electron | `$XDG_DATA_HOME/Bihon` or `~/.local/share/Bihon` |
+| Linux x64 | `Bihon-0.4.0-x86_64.AppImage` or `.deb` | Bundled Suwayomi, Java, Electron | `$XDG_DATA_HOME/Bihon` or `~/.local/share/Bihon` |
 | Android 8+ | `Bihon-Android-0.4.0.apk` | Native Mihon 0.21.2 adaptation | Android app storage, separate from Mihon |
 
 Version 0.4.0 is a release candidate until the checks in [VERIFICATION.md](VERIFICATION.md) pass. An Android filename ending in `-test.apk` uses disposable test signing and is for CI validation only. Production Android releases require a persistent Bihon signing identity.
@@ -14,7 +14,7 @@ Version 0.4.0 is a release candidate until the checks in [VERIFICATION.md](VERIF
 
 **Windows:** close the existing app, run the newer installer over it, then open Bihon. Java is included. The installer is unsigned.
 
-**Linux:** install the `.deb` with `sudo apt install ./Bihon-0.4.0-x64.deb`, or mark the AppImage executable and open it. AppImage needs FUSE 2 support; if unavailable, run `./Bihon-0.4.0-x64.AppImage --appimage-extract-and-run`. Use a graphical desktop with X11 or Xwayland (`DISPLAY` must be set for extension WebViews). On systems that restrict unprivileged user namespaces, use the Debian package so its installed sandbox helper and AppArmor integration can operate. The Debian package declares the desktop libraries it needs. ARM Linux is not supported by this release.
+**Linux:** install the `.deb` with `sudo apt install ./Bihon-0.4.0-amd64.deb`, or mark the AppImage executable and open it. AppImage needs FUSE 2 support; if unavailable, run `./Bihon-0.4.0-x86_64.AppImage --appimage-extract-and-run`. Use a graphical desktop with X11 or Xwayland (`DISPLAY` must be set for extension WebViews). On systems that restrict unprivileged user namespaces, use the Debian package so its installed sandbox helper and AppArmor integration can operate. The Debian package declares the desktop libraries it needs. ARM Linux is not supported by this release.
 
 **Android:** install the production APK and allow your browser/file manager to install it when Android asks. Bihon installs alongside Mihon. Existing Mihon data is not overwritten; export a backup in Mihon and restore it in Bihon, keeping your original. See [Android details](docs/android.md) for capabilities and build instructions.
 

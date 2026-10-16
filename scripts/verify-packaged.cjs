@@ -124,7 +124,7 @@ async function run() {
     const args = ['--disable-gpu'];
     if (process.platform === 'linux' && process.env.BIHON_SMOKE_NO_SANDBOX === '1') args.push('--no-sandbox');
     launchPending = true;
-    app = await electron.launch({ executablePath, args, env, timeout: 60000 });
+    app = await electron.launch({ executablePath, args, env, chromiumSandbox: true, timeout: 60000 });
     page = await app.firstWindow();
     page.on('pageerror', error => errors.push(error.message));
     await page.waitForURL('http://127.0.0.1:*/**', { timeout: 180000 });
@@ -199,13 +199,36 @@ async function run() {
     await until(() => next.isEnabled(), 'EPUB reader ready', 30000);
     await page.waitForFunction(() => Boolean(document.querySelector('foliate-view')?.lastLocation?.cfi), null, { timeout: 30000 });
     await page.waitForFunction(() => document.querySelector('foliate-view')?.renderer?.getContents?.().some(({ doc }) => doc.body.textContent.includes('Bihon fixture passage')), null, { timeout: 30000 });
+    // Relocation precedes Foliate's navigation unlock. Observe the original
+    // public method's completion without replacing its behavior or Promise.
+    await page.evaluate(() => {
+      const view = document.querySelector('foliate-view');
+      let sequence = 0;
+      for (const method of ['next', 'prev']) {
+        const original = view[method];
+        view[method] = function (...args) {
+          const state = { sequence: ++sequence, done: false, error: null };
+          view.__bihonSmokeTurn = state;
+          const result = Reflect.apply(original, this, args);
+          Promise.resolve(result).then(() => { state.done = true; }, error => { state.error = String(error); });
+          return result;
+        };
+      }
+    });
     const location = () => page.evaluate(() => document.querySelector('foliate-view').lastLocation.cfi);
-    let before = await location();
-    await next.click();
-    await until(async () => await location() !== before, 'Next page navigation');
-    before = await location();
-    await page.keyboard.press('ArrowRight');
-    await until(async () => await location() !== before, 'keyboard page navigation');
+    const expectTurn = async (action, label) => {
+      const before = await location();
+      const sequence = await page.evaluate(() => document.querySelector('foliate-view').__bihonSmokeTurn?.sequence ?? 0);
+      await action();
+      await page.waitForFunction(previous => {
+        const turn = document.querySelector('foliate-view').__bihonSmokeTurn;
+        if (turn?.error) throw new Error(turn.error);
+        return turn?.sequence > previous && turn.done;
+      }, sequence, { timeout: 15000 });
+      await until(async () => await location() !== before, label);
+    };
+    await expectTurn(() => next.click(), 'Next page navigation');
+    await expectTurn(() => page.keyboard.press('ArrowRight'), 'keyboard page navigation');
     await page.getByRole('button', { name: 'Contents', exact: true }).click();
     await page.getByRole('dialog', { name: 'Contents', exact: true }).waitFor();
     await page.getByRole('button', { name: 'Chapter 2', exact: true }).waitFor();
