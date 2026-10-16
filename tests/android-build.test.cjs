@@ -5,7 +5,7 @@ const path = require('node:path');
 const { root, upstream, prepare, androidVersionCode, insideWorkspace } = require('../scripts/android-prepare.cjs');
 const { verifyApk, normalizeFingerprint, signerCertificates } = require('../scripts/android-collect.cjs');
 const { findAndroidTool, sdkInvocation, runAndroidTool } = require('../scripts/android-sdk.cjs');
-const { assertSameProcess, assertHealthyLogs } = require('../scripts/android-smoke.cjs');
+const { assertSameProcess, assertHealthyLogs, captureLogcat } = require('../scripts/android-smoke.cjs');
 const version = require('../package.json').version;
 fs.mkdirSync(path.join(root, '.test-data'), { recursive: true });
 
@@ -147,4 +147,19 @@ test('Android startup checks ignore unrelated emulator crashes and detect Bihon 
   assert.throws(() => assertSameProcess('1234', '1235'), /exited or restarted/);
   assert.throws(() => assertSameProcess('1234', ''), /exited or restarted/);
   assert.throws(() => assertSameProcess('', ''), /did not survive/);
+});
+
+test('Android smoke diagnostics stream multi-megabyte child output without ENOBUFS', () => {
+  const directory = fs.mkdtempSync(path.join(root, '.test-data', 'android log output '));
+  const target = path.join(directory, 'logcat.txt');
+  try {
+    const execute = (_command, args, options) => {
+      assert.deepEqual(args, ['logcat', '-d', '-v', 'threadtime']);
+      assert.equal(args.includes('-c'), false);
+      return runAndroidTool(process.execPath, ['-e', 'process.stdout.write(Buffer.alloc(3 * 1024 * 1024, 120))'], options);
+    };
+    captureLogcat('fake-adb', target, execute);
+    assert.equal(fs.statSync(target).size, 3 * 1024 * 1024);
+    assert.equal(fs.readFileSync(target).at(-1), 120);
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });

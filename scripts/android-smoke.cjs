@@ -18,18 +18,26 @@ function assertHealthyLogs({ processLogs, fullLogs, pid, appId = upstream.applic
   if (ownAnr.test(fullLogs) || ownTombstone.test(fullLogs) || ownNativeSignal) throw new Error('Android logged a Bihon native crash or ANR during launch');
 }
 
+function captureLogcat(adb, file, execute = runAndroidTool) {
+  const descriptor = fs.openSync(file, 'w');
+  try {
+    // Fresh emulators can emit megabytes of boot logs. Stream diagnostics to
+    // disk so spawnSync's default output buffer cannot abort a healthy app.
+    execute(adb, ['logcat', '-d', '-v', 'threadtime'], { stdio: ['ignore', descriptor, 'pipe'], timeout: 15000 });
+  } finally { fs.closeSync(descriptor); }
+}
+
 // Run against a disposable emulator. Never clear or uninstall an existing user's app.
 async function smoke(apk = path.join(defaultDirectory, 'app/build/outputs/apk/release/app-universal-release.apk')) {
   const adb = findAndroidTool('adb');
   const output = path.join(root, 'artifacts/android-smoke');
   fs.mkdirSync(output, { recursive: true });
-  const command = args => runAndroidTool(adb, args);
+  const command = (args, options) => runAndroidTool(adb, args, options);
   const appId = upstream.applicationId;
   const before = command(['shell', 'pm', 'list', 'packages', appId]);
   if (before.split(/\r?\n/).some(line => line.trim() === `package:${appId}`)) throw new Error('Android smoke requires a fresh emulator without Bihon installed');
   command(['wait-for-device']);
   command(['install', '--no-streaming', apk]);
-  command(['logcat', '-c']);
   try {
     const launch = command(['shell', 'am', 'start', '-W', '-n', `${appId}/eu.kanade.tachiyomi.ui.main.MainActivity`]);
     fs.writeFileSync(path.join(output, 'launch.txt'), launch);
@@ -44,9 +52,9 @@ async function smoke(apk = path.join(defaultDirectory, 'app/build/outputs/apk/re
     const activity = command(['shell', 'dumpsys', 'activity', 'activities']);
     fs.writeFileSync(path.join(output, 'activities.txt'), activity);
     if (!activity.split(/\r?\n/).some(line => /(?:mResumedActivity|topResumedActivity)/.test(line) && line.includes(appId))) throw new Error('Bihon Android is not the resumed app');
-    const logs = command(['logcat', '-d', '-v', 'threadtime']);
-    fs.writeFileSync(path.join(output, 'logcat.txt'), logs);
-    const processLogs = command(['logcat', '-d', `--pid=${pid}`, '-v', 'threadtime']);
+    const logs = command(['logcat', '-d', '-b', 'crash', '-b', 'system', '-t', '2000', '-v', 'threadtime'], { maxBuffer: 16 * 1024 * 1024, timeout: 15000 });
+    fs.writeFileSync(path.join(output, 'crash-system-logcat.txt'), logs);
+    const processLogs = command(['logcat', '-d', `--pid=${pid}`, '-t', '2000', '-v', 'threadtime'], { maxBuffer: 16 * 1024 * 1024, timeout: 15000 });
     fs.writeFileSync(path.join(output, 'bihon-logcat.txt'), processLogs);
     assertHealthyLogs({ processLogs, fullLogs: logs, pid, appId });
     const xml = command(['shell', 'uiautomator', 'dump', '/sdcard/bihon-smoke.xml']);
@@ -56,10 +64,10 @@ async function smoke(apk = path.join(defaultDirectory, 'app/build/outputs/apk/re
     if (!ui.includes(`package="${appId}"`)) throw new Error('Bihon Android did not render its onboarding UI');
     console.log('Android smoke passed: APK installed, onboarding rendered, process remained foreground, no crash or ANR.');
   } finally {
-    try { fs.writeFileSync(path.join(output, 'logcat.txt'), command(['logcat', '-d', '-v', 'threadtime'])); } catch {}
+    try { captureLogcat(adb, path.join(output, 'logcat.txt')); } catch {}
     try { command(['shell', 'screencap', '-p', '/sdcard/bihon-smoke.png']); command(['pull', '/sdcard/bihon-smoke.png', path.join(output, 'onboarding.png')]); } catch {}
   }
 }
 
 if (require.main === module) smoke(process.argv[2]).catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { smoke, assertSameProcess, assertHealthyLogs };
+module.exports = { smoke, assertSameProcess, assertHealthyLogs, captureLogcat };
