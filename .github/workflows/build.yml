@@ -181,9 +181,9 @@ jobs:
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --name bihon-ci --package "system-images;android-$API;google_apis;x86_64" --force
           mkdir -p artifacts/android-smoke
           nohup "$ANDROID_HOME/emulator/emulator" -avd bihon-ci -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect >artifacts/android-smoke/emulator.log 2>&1 &
-          adb wait-for-device
+          "$ANDROID_HOME/platform-tools/adb" wait-for-device
           for attempt in $(seq 1 120); do
-            if [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = '1' ]; then exit 0; fi
+            if [ "$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed | tr -d '\r')" = '1' ]; then exit 0; fi
             sleep 2
           done
           exit 1
