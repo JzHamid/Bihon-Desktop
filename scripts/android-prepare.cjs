@@ -9,6 +9,14 @@ const defaultDirectory = path.join(root, '.build', 'android');
 const trackPath = 'app/src/main/java/eu/kanade/tachiyomi/data/track';
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 
+function sourceTemplates(directory = path.join(root, 'android/source')) {
+  const files = fs.readdirSync(directory, { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile())
+    .map(entry => path.relative(directory, path.join(entry.parentPath || entry.path, entry.name)).split(path.sep).join('/'))
+    .sort();
+  return Object.fromEntries(files.map(file => [file, Buffer.from(fs.readFileSync(path.join(directory, file), 'utf8').replace(/\r\n/g, '\n'))]));
+}
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { encoding: 'utf8', windowsHide: true, ...options });
   if (result.status !== 0) throw new Error(`${command} failed: ${result.stderr || result.error || result.status}`);
@@ -124,6 +132,25 @@ function patchSource(directory, version) {
     return replaceOnce(replaceOnce(text, '"mihonapp/mihon-preview"', '"JzHamid/Bihon-Desktop"', 'AppUpdateChecker.kt'), '"mihonapp/mihon"', '"JzHamid/Bihon-Desktop"', 'AppUpdateChecker.kt');
   });
 
+  // Native Android stores use their own APK index, not the desktop JVM repository.
+  for (const [file, bytes] of Object.entries(sourceTemplates())) {
+    const target = path.join(directory, file);
+    if (fs.existsSync(target)) throw new Error(`Bihon Android source collides with upstream: ${file}`);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, bytes);
+    changed.push(file);
+  }
+  update('app/src/main/java/eu/kanade/tachiyomi/ui/main/MainActivity.kt', text => {
+    text = replaceOnce(text, 'import cafe.adriel.voyager.navigator.LocalNavigator', 'import app.bihon.android.BihonDefaultExtensionStoreSetup\nimport cafe.adriel.voyager.navigator.LocalNavigator', 'MainActivity.kt');
+    text = replaceOnce(text, '    @Inject private lateinit var extensionManager: ExtensionManager', '    @Inject private lateinit var extensionManager: ExtensionManager\n\n    @Inject private lateinit var defaultExtensionStoreSetup: BihonDefaultExtensionStoreSetup', 'MainActivity.kt');
+    return replaceOnce(text, '            isAppMigrating.value = false\n', '            isAppMigrating.value = false\n            databaseRepository.awaitOpen()\n            defaultExtensionStoreSetup.start()\n', 'MainActivity.kt');
+  });
+  update('domain/src/main/java/mihon/domain/extension/interactor/RemoveExtensionStore.kt', text => {
+    text = replaceOnce(text, 'import mihon.domain.extension.repository.ExtensionStoreRepository\n', '', 'RemoveExtensionStore.kt');
+    text = replaceOnce(text, '    private val repository: ExtensionStoreRepository,', '    private val defaultStore: BihonDefaultExtensionStore,', 'RemoveExtensionStore.kt');
+    return replaceOnce(text, '        repository.remove(indexUrl)', '        defaultStore.remove(indexUrl)', 'RemoveExtensionStore.kt');
+  });
+
   const icon = fs.readFileSync(path.join(root, 'desktop/assets/bihon-icon.png'));
   fs.writeFileSync(path.join(directory, 'app/src/main/res/drawable/bihon_mark.png'), icon);
   fs.writeFileSync(path.join(directory, 'app/src/main/res/mipmap/ic_launcher.xml'), `<?xml version="1.0" encoding="utf-8"?>
@@ -148,7 +175,7 @@ function patchSource(directory, version) {
     return replaceOnce(text, 'uriHandler.openUri("https://mihon.app/privacy/")', 'uriHandler.openUri("https://github.com/JzHamid/Bihon-Desktop/blob/main/docs/android.md#privacy")', 'AboutScreen.kt');
   });
 
-  fs.writeFileSync(path.join(directory, 'BIHON-NOTICE.txt'), `Bihon Android ${version}\nBased on Mihon ${upstream.tag} (${upstream.revision}).\nCopyright the Mihon and Tachiyomi contributors; licensed under Apache-2.0.\nBihon changes: application identity, branding, deterministic provenance, disabled telemetry/updater and unregistered OAuth clients.\nThe original LICENSE, source copyright notices and dependency license viewer are retained.\nBihon Android is distributed separately from the MPL-2.0 Bihon Desktop application.\n`);
+  fs.writeFileSync(path.join(directory, 'BIHON-NOTICE.txt'), `Bihon Android ${version}\nBased on Mihon ${upstream.tag} (${upstream.revision}).\nCopyright the Mihon and Tachiyomi contributors; licensed under Apache-2.0.\nBihon changes: application identity, branding, deterministic provenance, one-time pinned Keiyoushi store setup, disabled telemetry/updater and unregistered OAuth clients.\nThe original LICENSE, source copyright notices and dependency license viewer are retained.\nBihon Android is distributed separately from the MPL-2.0 Bihon Desktop application.\n`);
   fs.writeFileSync(path.join(directory, 'BIHON-BUILD.md'), `# Bihon Android ${version}\n\nThis is the complete patched source for Bihon Android, based on Mihon ${upstream.tag} at ${upstream.revision}. Use JDK ${upstream.java}, Android SDK platform ${upstream.compileAndroidApi}, and NDK ${upstream.ndk}.\n\nRun ./gradlew assembleRelease testDebugUnitTest verifySqlDelightMigration -Pdist=foss -Pinclude-telemetry=false -Penable-updater=false (gradlew.bat on Windows). The universal APK is app/build/outputs/apk/release/app-universal-release.apk.\n\nOrdinary local builds use the Android debug signing certificate. Production builds set BIHON_ANDROID_RELEASE=true and BIHON_ANDROID_KEYSTORE_PATH, BIHON_ANDROID_KEYSTORE_PASSWORD, BIHON_ANDROID_KEY_ALIAS, BIHON_ANDROID_KEY_PASSWORD to a persistent private signing identity. Signing material is intentionally absent from this source.\n\nThe Android application ID is ${upstream.applicationId}. Telemetry and the upstream updater are disabled. OAuth trackers without Bihon registrations are unavailable; Komga, Kavita, Suwayomi and MangaUpdates remain available. The upstream LICENSE and all source copyright notices are retained.\n`);
   const assets = path.join(directory, 'app/src/main/assets');
   fs.mkdirSync(assets, { recursive: true });
@@ -161,7 +188,8 @@ function patchSource(directory, version) {
 }
 
 function preparedIdentity(version) {
-  return hash(JSON.stringify({ upstream, version, recipe: hash(fs.readFileSync(__filename)), icon: hash(fs.readFileSync(path.join(root, 'desktop/assets/bihon-icon.png'))) }));
+  const templates = Object.fromEntries(Object.entries(sourceTemplates()).map(([file, bytes]) => [file, hash(bytes)]));
+  return hash(JSON.stringify({ upstream, version, recipe: hash(fs.readFileSync(__filename)), templates, icon: hash(fs.readFileSync(path.join(root, 'desktop/assets/bihon-icon.png'))) }));
 }
 
 function verifyPrepared(directory, version) {
@@ -217,4 +245,4 @@ if (require.main === module) {
   prepare(options).then(directory => console.log(`Prepared ${upstream.name} Android source: ${directory}`)).catch(error => { console.error(error.message); process.exitCode = 1; });
 }
 
-module.exports = { prepare, patchSource, verifyPrepared, preparedIdentity, androidVersionCode, replaceOnce, insideWorkspace, defaultDirectory, upstream, root, run, hash };
+module.exports = { prepare, patchSource, verifyPrepared, preparedIdentity, sourceTemplates, androidVersionCode, replaceOnce, insideWorkspace, defaultDirectory, upstream, root, run, hash };

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { root, upstream, prepare, androidVersionCode, insideWorkspace } = require('../scripts/android-prepare.cjs');
+const { root, upstream, prepare, sourceTemplates, hash, androidVersionCode, insideWorkspace } = require('../scripts/android-prepare.cjs');
 const { verifyApk, normalizeFingerprint, signerCertificates } = require('../scripts/android-collect.cjs');
 const { findAndroidTool, sdkInvocation, runAndroidTool } = require('../scripts/android-sdk.cjs');
 const { assertSameProcess, assertHealthyLogs, captureLogcat } = require('../scripts/android-smoke.cjs');
@@ -37,6 +37,21 @@ test('Android versions increase monotonically and cannot silently collide', () =
   for (const invalid of ['1.0.0-test', '1.100.0', '2100.0.0', '0.0.-1']) {
     assert.throws(() => androidVersionCode(invalid));
   }
+});
+
+test('native Android template bytes and recipe hashes are identical across Windows and Linux line endings', () => {
+  const directory = fs.mkdtempSync(path.join(root, '.test-data', 'android-templates-'));
+  const source = path.join(directory, 'domain/src/main/Example.kt');
+  fs.mkdirSync(path.dirname(source), { recursive: true });
+  try {
+    fs.writeFileSync(source, 'package example\n\nclass Example\n');
+    const unix = sourceTemplates(directory);
+    fs.writeFileSync(source, 'package example\r\n\r\nclass Example\r\n');
+    const windows = sourceTemplates(directory);
+    assert.deepEqual(Object.keys(windows), ['domain/src/main/Example.kt']);
+    assert.deepEqual(windows, unix);
+    assert.equal(hash(windows['domain/src/main/Example.kt']), hash(unix['domain/src/main/Example.kt']));
+  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
 });
 
 function apkTools({ appId = upstream.applicationId, appVersion = version, fingerprint = 'a'.repeat(64), debug = false, failSignature = false } = {}) {
