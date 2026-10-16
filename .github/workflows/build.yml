@@ -68,8 +68,9 @@ jobs:
           ../../dist/*.AppImage --appimage-extract >/dev/null
           cd ../..
           if grep -q -- '--no-sandbox' .build/appimage/squashfs-root/*.desktop; then exit 1; fi
+          native_runtime="$PWD/.build/appimage/squashfs-root/resources/runtime"
           for library in libjcef.so libcef.so; do
-            report=$(ldd ".build/appimage/squashfs-root/resources/runtime/kcef/$library")
+            report=$(LD_LIBRARY_PATH="$native_runtime/jre/lib/server:$native_runtime/jre/lib:$native_runtime/kcef" ldd "$native_runtime/kcef/$library")
             echo "$report"
             if echo "$report" | grep -q 'not found'; then exit 1; fi
           done

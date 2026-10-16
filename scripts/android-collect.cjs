@@ -15,11 +15,14 @@ function signerCertificates(signature) {
   // Source: android.googlesource.com/platform/tools/apksig/+/refs/heads/main/
   // src/apksigner/java/com/android/apksigner/ApkSignerTool.java (verify method).
   const label = '(?:#\\d+|\\(minSdkVersion=\\d+(?: \\(dev release=true\\))?, maxSdkVersion=\\d+\\))';
+  // SDK 37 emits "V2 Signer:" for v2 signatures. The captured real SDK report
+  // is retained in tests/fixtures/android/apksigner-v2.txt.
+  const prefix = `(?:Signer ${label}|V2 Signer:)`;
   const text = signature.replace(/\r\n/g, '\n');
   const count = text.match(/^Number of signers: (\d+)$/m);
   if (count && Number(count[1]) !== 1) throw new Error('APK must have exactly one verified signing certificate');
-  const digests = [...text.matchAll(new RegExp(`^Signer ${label} certificate SHA-256 digest: ([a-fA-F0-9:]+)$`, 'gm'))].map(match => normalizeFingerprint(match[1]));
-  const subjects = [...text.matchAll(new RegExp(`^Signer ${label} certificate DN: (.+)$`, 'gm'))].map(match => match[1]);
+  const digests = [...text.matchAll(new RegExp(`^${prefix} certificate SHA-256 digest: ([a-fA-F0-9:]+)$`, 'gm'))].map(match => normalizeFingerprint(match[1]));
+  const subjects = [...text.matchAll(new RegExp(`^${prefix} certificate DN: (.+)$`, 'gm'))].map(match => match[1]);
   const identities = [...new Set(digests)];
   if (identities.length !== 1 || subjects.length !== digests.length) throw new Error('APK must have exactly one verified signing certificate');
   return { fingerprint: identities[0], subjects };

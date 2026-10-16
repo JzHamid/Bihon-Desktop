@@ -4,6 +4,20 @@ const { setTimeout: sleep } = require('node:timers/promises');
 const { root, upstream, defaultDirectory } = require('./android-prepare.cjs');
 const { findAndroidTool, runAndroidTool } = require('./android-sdk.cjs');
 
+function assertSameProcess(initialPid, currentPid) {
+  if (!/^\d+$/.test(initialPid)) throw new Error('Bihon Android process did not survive launch');
+  if (currentPid !== initialPid) throw new Error('Bihon Android process exited or restarted after launch');
+}
+
+function assertHealthyLogs({ processLogs, fullLogs, pid, appId = upstream.applicationId }) {
+  if (/FATAL EXCEPTION|Fatal signal \d+/.test(processLogs)) throw new Error('Bihon Android logged a Java or native crash during launch');
+  const escapedApp = appId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const ownAnr = new RegExp(`ANR in ${escapedApp}(?=[:\\s(]|$)`);
+  const ownTombstone = new RegExp(`>>> ${escapedApp}(?::[A-Za-z0-9_.-]+)? <<<`);
+  const ownNativeSignal = fullLogs.split(/\r?\n/).some(line => /Fatal signal \d+/.test(line) && new RegExp(`\\bpid[ :]+${pid}\\b`).test(line));
+  if (ownAnr.test(fullLogs) || ownTombstone.test(fullLogs) || ownNativeSignal) throw new Error('Android logged a Bihon native crash or ANR during launch');
+}
+
 // Run against a disposable emulator. Never clear or uninstall an existing user's app.
 async function smoke(apk = path.join(defaultDirectory, 'app/build/outputs/apk/release/app-universal-release.apk')) {
   const adb = findAndroidTool('adb');
@@ -20,15 +34,21 @@ async function smoke(apk = path.join(defaultDirectory, 'app/build/outputs/apk/re
     const launch = command(['shell', 'am', 'start', '-W', '-n', `${appId}/eu.kanade.tachiyomi.ui.main.MainActivity`]);
     fs.writeFileSync(path.join(output, 'launch.txt'), launch);
     if (!/Status:\s*ok/.test(launch)) throw new Error('Bihon Android activity did not start');
+    const initialPid = command(['shell', 'pidof', appId]).trim();
+    fs.writeFileSync(path.join(output, 'process.json'), `${JSON.stringify({ applicationId: appId, initialPid }, null, 2)}\n`);
+    assertSameProcess(initialPid, initialPid);
     await sleep(12000);
     const pid = command(['shell', 'pidof', appId]).trim();
-    if (!/^\d+(?:\s+\d+)*$/.test(pid)) throw new Error('Bihon Android process exited after launch');
+    fs.writeFileSync(path.join(output, 'process.json'), `${JSON.stringify({ applicationId: appId, initialPid, settledPid: pid }, null, 2)}\n`);
+    assertSameProcess(initialPid, pid);
     const activity = command(['shell', 'dumpsys', 'activity', 'activities']);
     fs.writeFileSync(path.join(output, 'activities.txt'), activity);
     if (!activity.split(/\r?\n/).some(line => /(?:mResumedActivity|topResumedActivity)/.test(line) && line.includes(appId))) throw new Error('Bihon Android is not the resumed app');
     const logs = command(['logcat', '-d', '-v', 'threadtime']);
     fs.writeFileSync(path.join(output, 'logcat.txt'), logs);
-    if (/FATAL EXCEPTION|Fatal signal \d+|ANR in app\.bihon\.android/.test(logs)) throw new Error('Android logged a crash or ANR during launch');
+    const processLogs = command(['logcat', '-d', `--pid=${pid}`, '-v', 'threadtime']);
+    fs.writeFileSync(path.join(output, 'bihon-logcat.txt'), processLogs);
+    assertHealthyLogs({ processLogs, fullLogs: logs, pid, appId });
     const xml = command(['shell', 'uiautomator', 'dump', '/sdcard/bihon-smoke.xml']);
     fs.writeFileSync(path.join(output, 'ui-dump.txt'), xml);
     command(['pull', '/sdcard/bihon-smoke.xml', path.join(output, 'onboarding.xml')]);
@@ -42,4 +62,4 @@ async function smoke(apk = path.join(defaultDirectory, 'app/build/outputs/apk/re
 }
 
 if (require.main === module) smoke(process.argv[2]).catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { smoke };
+module.exports = { smoke, assertSameProcess, assertHealthyLogs };

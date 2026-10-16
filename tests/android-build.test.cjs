@@ -5,6 +5,7 @@ const path = require('node:path');
 const { root, upstream, prepare, androidVersionCode, insideWorkspace } = require('../scripts/android-prepare.cjs');
 const { verifyApk, normalizeFingerprint, signerCertificates } = require('../scripts/android-collect.cjs');
 const { findAndroidTool, sdkInvocation, runAndroidTool } = require('../scripts/android-sdk.cjs');
+const { assertSameProcess, assertHealthyLogs } = require('../scripts/android-smoke.cjs');
 const version = require('../package.json').version;
 fs.mkdirSync(path.join(root, '.test-data'), { recursive: true });
 
@@ -83,6 +84,15 @@ Source Stamp Signer certificate SHA-256 digest: ${'b'.repeat(64)}
   assert.throws(() => signerCertificates(`Source Stamp Signer certificate SHA-256 digest: ${'a'.repeat(64)}\n`), /exactly one/);
 });
 
+test('APK collection accepts the actual SDK 37 v2 certificate report from the built Bihon APK', () => {
+  const report = fs.readFileSync(path.join(__dirname, 'fixtures/android/apksigner-v2.txt'), 'utf8');
+  const fingerprint = '1ab0eeb011a34300f2364ab0f42eac8fbdd2e0babbd80e3bd4198df7b855165e';
+  const execute = (command, args) => args[0] === 'verify' ? report : apkTools()(command, args);
+  assert.equal(verifyApk('app.apk', undefined, execute, tools, true).certificateSha256, fingerprint);
+  assert.throws(() => verifyApk('app.apk', 'f'.repeat(64), execute, tools), /expected persistent/);
+  assert.throws(() => signerCertificates(report.replace('Number of signers: 1', 'Number of signers: 2')), /exactly one/);
+});
+
 test('Android SDK discovery selects platform entrypoints and newest installed build tools', () => {
   const directory = fs.mkdtempSync(path.join(root, '.test-data', 'android sdk spaces '));
   const tool = relative => {
@@ -124,4 +134,17 @@ test('Windows SDK batch invocation preserves spaced paths and exact arguments in
     const emptyArgs = ['', 'path with spaces.apk'];
     assert.deepEqual(JSON.parse(runAndroidTool(batch, emptyArgs)), emptyArgs);
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('Android startup checks ignore unrelated emulator crashes and detect Bihon crashes or restarts', () => {
+  const options = { processLogs: 'Bihon started normally', pid: '1234' };
+  assert.doesNotThrow(() => assertHealthyLogs({ ...options, fullLogs: 'FATAL EXCEPTION: main\nProcess: com.google.android.gms\nANR in com.google.android.gms\nFatal signal 11 in tid 888, pid 999 (gms)\n>>> com.google.android.gms <<<' }));
+  assert.throws(() => assertHealthyLogs({ ...options, fullLogs: '', processLogs: 'FATAL EXCEPTION: main\nProcess: app.bihon.android' }), /Java or native crash/);
+  assert.throws(() => assertHealthyLogs({ ...options, fullLogs: 'ANR in app.bihon.android (eu.kanade.tachiyomi.ui.main.MainActivity)' }), /native crash or ANR/);
+  assert.throws(() => assertHealthyLogs({ ...options, fullLogs: 'pid: 1234, tid: 1235, name: worker >>> app.bihon.android <<<' }), /native crash or ANR/);
+  assert.throws(() => assertHealthyLogs({ ...options, fullLogs: 'Fatal signal 11 (SIGSEGV) in tid 1235 (worker), pid 1234 (bihon)' }), /native crash or ANR/);
+  assert.doesNotThrow(() => assertSameProcess('1234', '1234'));
+  assert.throws(() => assertSameProcess('1234', '1235'), /exited or restarted/);
+  assert.throws(() => assertSameProcess('1234', ''), /exited or restarted/);
+  assert.throws(() => assertSameProcess('', ''), /did not survive/);
 });
