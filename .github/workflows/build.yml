@@ -2,7 +2,7 @@ name: Platform builds
 
 on:
   push:
-    branches: [main, 'codex/cross-platform-*']
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24.20.0'
@@ -92,6 +94,8 @@ jobs:
       BIHON_ANDROID_RELEASE: ${{ secrets.BIHON_ANDROID_KEYSTORE_BASE64 != '' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24.20.0'
@@ -157,6 +161,8 @@ jobs:
         api: [26, 35]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24.20.0'
