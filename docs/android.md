@@ -19,7 +19,7 @@ Install Node.js 24, JDK 21, Android command-line tools, SDK platform `platforms;
 ```sh
 node scripts/android-prepare.cjs
 cd .build/android
-./gradlew testReleaseUnitTest verifySqlDelightMigration assembleRelease -Pdist=foss -Pinclude-telemetry=false -Penable-updater=false
+./gradlew testDebugUnitTest verifySqlDelightMigration assembleRelease -Pdist=foss -Pinclude-telemetry=false -Penable-updater=false
 ```
 
 Use `gradlew.bat` on Windows. The universal APK is `.build/android/app/build/outputs/apk/release/app-universal-release.apk`; it includes ARMv7, ARM64, x86 and x86_64. The generated directory is disposable build output. Preparation verifies the upstream archive SHA-256 and refuses to overwrite existing source belonging to another recipe/version or a nonempty unrecognized directory. The pin and checksum are recorded in [android/upstream.json](../android/upstream.json).

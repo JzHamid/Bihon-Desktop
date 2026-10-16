@@ -51,7 +51,14 @@ jobs:
         run: |
           $env:BIHON_EXECUTABLE = Join-Path $PWD 'dist/win-unpacked/Bihon.exe'
           npm run verify:packaged
-      - name: Test shipped Linux AppImage
+      - name: Install and test Linux Debian package with the normal sandbox
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get install -y ./dist/*.deb
+          BIHON_EXECUTABLE=/opt/Bihon/bihon xvfb-run -a npm run verify:packaged
+          mv artifacts/packaged-linux artifacts/packaged-linux-deb
+      - name: Test shipped Linux AppImage in the isolated runner
         if: runner.os == 'Linux'
         shell: bash
         run: |
@@ -60,6 +67,7 @@ jobs:
           cd .build/appimage
           ../../dist/*.AppImage --appimage-extract >/dev/null
           cd ../..
+          if grep -q -- '--no-sandbox' .build/appimage/squashfs-root/*.desktop; then exit 1; fi
           for library in libjcef.so libcef.so; do
             report=$(ldd ".build/appimage/squashfs-root/resources/runtime/kcef/$library")
             echo "$report"
@@ -124,7 +132,7 @@ jobs:
           BIHON_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.BIHON_ANDROID_KEYSTORE_PASSWORD }}
           BIHON_ANDROID_KEY_ALIAS: ${{ secrets.BIHON_ANDROID_KEY_ALIAS }}
           BIHON_ANDROID_KEY_PASSWORD: ${{ secrets.BIHON_ANDROID_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon --stacktrace testReleaseUnitTest verifySqlDelightMigration assembleRelease -Pdist=foss -Pinclude-telemetry=false -Penable-updater=false
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest verifySqlDelightMigration assembleRelease -Pdist=foss -Pinclude-telemetry=false -Penable-updater=false
       - name: Collect and verify test APK
         if: env.BIHON_ANDROID_RELEASE != 'true'
         run: node scripts/android-collect.cjs --test-build

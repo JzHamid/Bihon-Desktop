@@ -3,6 +3,28 @@ const path = require('node:path');
 const { platformDetails, runtimeDirectory } = require('../desktop/platform.cjs');
 const { downloadVerified, extract } = require('./runtime-tools.cjs');
 
+async function installWebview({ extracted, destination, platform = process.platform }) {
+  await fs.mkdir(destination, { recursive: true });
+  // Match upstream CEFManager.linuxMove: the Linux native WebView is entirely
+  // under lib, including jcef_helper. Flattening bin as well collides with
+  // lib/jfr (directory) versus bin/jfr (Java Flight Recorder executable).
+  const directories = platform === 'linux' ? ['lib'] : ['lib', 'bin'];
+  for (const directory of directories) {
+    for (const entry of await fs.readdir(path.join(extracted, directory))) {
+      await fs.cp(path.join(extracted, directory, entry), path.join(destination, entry), { recursive: true, force: true, dereference: true });
+    }
+  }
+  await fs.cp(path.join(extracted, 'legal'), path.join(destination, 'legal'), { recursive: true, force: true, dereference: true });
+  await fs.access(path.join(destination, platform === 'win32' ? 'jcef.dll' : 'libjcef.so'));
+  if (platform === 'linux') {
+    await fs.access(path.join(destination, 'libcef.so'));
+    await fs.access(path.join(destination, 'jcef_helper'), require('node:fs').constants.X_OK);
+  }
+  // This is the same release marker Suwayomi uses. Publish it after all native
+  // libraries so interrupted preparation cannot look like a finished install.
+  await fs.copyFile(path.join(extracted, 'release'), path.join(destination, 'release'));
+}
+
 async function prepareWebview({ root = path.resolve(__dirname, '..') } = {}) {
   const { webview } = platformDetails();
   const filename = `${webview.asset}.tar.gz`;
@@ -24,21 +46,10 @@ async function prepareWebview({ root = path.resolve(__dirname, '..') } = {}) {
   }
   if (!extracted) throw new Error('The pinned WebView archive has no JBR release marker.');
   const destination = path.join(runtimeDirectory(root), 'kcef');
-  await fs.mkdir(destination, { recursive: true });
-  for (const directory of ['lib', 'bin']) {
-    for (const entry of await fs.readdir(path.join(extracted, directory))) {
-      await fs.cp(path.join(extracted, directory, entry), path.join(destination, entry), { recursive: true, force: true, dereference: true });
-    }
-  }
-  await fs.cp(path.join(extracted, 'legal'), path.join(destination, 'legal'), { recursive: true, force: true, dereference: true });
-  const native = process.platform === 'win32' ? 'jcef.dll' : 'libjcef.so';
-  await fs.access(path.join(destination, native));
-  // This is the same release marker Suwayomi uses. Publish it after all native
-  // libraries so interrupted preparation cannot look like a finished install.
-  await fs.copyFile(path.join(extracted, 'release'), path.join(destination, 'release'));
+  await installWebview({ extracted, destination });
   console.log('Pinned extension WebView and license notices prepared.');
   return destination;
 }
 
 if (require.main === module) prepareWebview().catch(error => { console.error(error.message); process.exitCode = 1; });
-module.exports = { prepareWebview };
+module.exports = { prepareWebview, installWebview };

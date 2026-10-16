@@ -7,7 +7,7 @@ const path = require('node:path');
 const http = require('node:http');
 const { once } = require('node:events');
 const { freePort } = require('../desktop/server.cjs');
-const { readJson, writeJson, digest } = require('../desktop/storage.cjs');
+const { readJson, writeJson, digest, inside } = require('../desktop/storage.cjs');
 const { makePage } = require('./test-page.cjs');
 const { makeEpub } = require('./test-epub.cjs');
 
@@ -42,7 +42,9 @@ async function verifyWebview(origin, stateDir) {
     socket.addEventListener('error', event => { socketError = event.error || new Error(event.message || 'Native WebView connection failed.'); });
     socket.addEventListener('message', event => {
       try {
-        const message = JSON.parse(String(event.data));
+        const text = String(event.data);
+        assert.ok(Buffer.byteLength(text) <= 8 * 1024 * 1024, 'Native WebView response exceeds the smoke-test limit.');
+        const message = JSON.parse(text);
         if (message.type === 'pong') {
           clearInterval(ping);
           socket.send(JSON.stringify({ type: 'loadUrl', url, width: 320, height: 240 }));
@@ -52,8 +54,11 @@ async function verifyWebview(origin, stateDir) {
           assert.ok(!message.error, message.error);
           loaded = true;
         } else if (message.type === 'render') {
+          assert.ok(Array.isArray(message.image) && message.image.length >= 24 && message.image.length <= 2 * 1024 * 1024, 'Native WebView returned an invalid or oversized render.');
           const image = Buffer.from(message.image);
           assert.deepEqual(image.subarray(0, 8), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+          assert.ok(image.readUInt32BE(16) > 0 && image.readUInt32BE(16) <= 1000, 'Native WebView render width is out of bounds.');
+          assert.ok(image.readUInt32BE(20) > 0 && image.readUInt32BE(20) <= 1000, 'Native WebView render height is out of bounds.');
           painted = true;
         }
       } catch (error) { socketError = error; }
@@ -94,9 +99,11 @@ async function run() {
   const stateDir = path.join(fixtureRoot, 'state');
   const downloadsPath = path.join(fixtureRoot, 'downloads');
   const artifactDir = path.join(root, 'artifacts', `packaged-${process.platform}`);
+  const expectedVersion = require('../package.json').version;
+  const expectedEngineVersion = require('../UPSTREAM.json').server.tag.replace(/^v/, '');
   await fs.mkdir(artifactDir, { recursive: true });
   const errors = [], checks = [], ownedServers = new Set();
-  let app, page, origin, failed;
+  let app, page, origin, failed, upgradeEvidence, launchPending = false;
   const pass = label => { checks.push(label); console.log(`PASS ${label}`); };
   const request = async (route, options = {}) => {
     const response = await fetch(`${origin}/api/v1/${route}`, { ...options, signal: AbortSignal.timeout(60000) });
@@ -116,6 +123,7 @@ async function run() {
     delete env.ELECTRON_RUN_AS_NODE;
     const args = ['--disable-gpu'];
     if (process.platform === 'linux' && process.env.BIHON_SMOKE_NO_SANDBOX === '1') args.push('--no-sandbox');
+    launchPending = true;
     app = await electron.launch({ executablePath, args, env, timeout: 60000 });
     page = await app.firstWindow();
     page.on('pageerror', error => errors.push(error.message));
@@ -126,6 +134,8 @@ async function run() {
     ownedServers.add(server.pid);
     await page.getByRole('link', { name: 'Library', exact: true }).waitFor({ timeout: 60000 });
     const info = await page.evaluate(() => window.bihon.appInfo());
+    assert.equal(info.version, expectedVersion, 'Smoke-test source and packaged app versions must match.');
+    assert.equal(info.engineVersion, expectedEngineVersion);
     assert.equal(info.stateDir, stateDir);
     assert.equal(info.downloadsPath, downloadsPath);
     console.log(`Packaged ${process.platform} Bihon ${info.version}: ${origin}`);
@@ -141,6 +151,8 @@ async function run() {
       ]);
       app = undefined;
       await until(() => [...ownedServers].every(pid => !alive(pid)), 'bundled Java shutdown');
+      ownedServers.clear();
+      launchPending = false;
     } finally { clearTimeout(timer); }
   };
   try {
@@ -157,6 +169,9 @@ async function run() {
     const originalHash = await digest(epub);
 
     await launch();
+    const firstUpgradeState = await readJson(path.join(stateDir, 'upgrade-state.json'));
+    assert.equal(firstUpgradeState.lastSuccessfulVersion, expectedVersion);
+    assert.equal(firstUpgradeState.lastUpgradeBackup, null, 'Fresh state must not create an upgrade snapshot.');
     pass('fresh library mounts with the bundled runtime and isolated storage');
     await verifyWebview(origin, stateDir);
     pass('bundled native WebView initializes, loads a local page, and renders PNG pixels');
@@ -166,7 +181,7 @@ async function run() {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] });
     }, epub);
     await page.getByRole('button', { name: 'Import EPUBs', exact: true }).click();
-    await page.getByRole('button', { name: /Bihon Smoke Book/ }).first().waitFor({ timeout: 30000 });
+    await page.getByRole('button', { name: /^Bihon Smoke Book(?:\s|$)/ }).first().waitFor({ timeout: 30000 });
     const [book] = await page.evaluate(() => window.bihon.books.list());
     assert.equal(book.title, 'Bihon Smoke Book');
     assert.equal(book.metadataReady, true);
@@ -177,7 +192,7 @@ async function run() {
     assert.equal((await page.evaluate(() => window.bihon.books.list())).length, 1);
     pass('native import IPC, EPUB metadata, managed copy, and duplicate detection');
 
-    await page.getByRole('button', { name: /Bihon Smoke Book/ }).first().click();
+    await page.getByRole('button', { name: /^Bihon Smoke Book(?:\s|$)/ }).first().click();
     await page.waitForURL(`**/books/${book.id}/read`);
     const next = page.getByRole('button', { name: 'Next', exact: true });
     await next.waitFor({ timeout: 30000 });
@@ -227,7 +242,13 @@ async function run() {
     await json(route, { ...form('read=true&lastPageRead=1'), method: 'PATCH' });
     const backup = Buffer.from(await (await request('backup/export')).arrayBuffer());
     assert.ok(backup.length > 20, 'Engine exported an empty backup.');
-    await json('backup/validate', { method: 'POST', body: backup });
+    const backupValidation = await json('backup/validate', { method: 'POST', body: backup });
+    assert.deepEqual(backupValidation.missingSources, []);
+    assert.deepEqual(backupValidation.missingTrackers, []);
+    const backupFile = path.join(stateDir, 'backups', 'packaged-smoke.proto.gz');
+    await fs.mkdir(path.dirname(backupFile), { recursive: true });
+    await fs.writeFile(backupFile, backup);
+    const backupHash = await digest(backupFile);
     await json(`manga/${manga.id}/library`, { method: 'DELETE' });
     assert.equal((await json(`manga/${manga.id}`)).inLibrary, false);
     await json('backup/import', { method: 'POST', body: backup });
@@ -239,7 +260,37 @@ async function run() {
     await close();
     pass('application exit gracefully shuts down its bundled Java process');
 
+    // Only the synthetic profile's version marker changes. The populated
+    // database and preferences were created by the same pinned Suwayomi engine
+    // used by Bihon 0.3.0; this does not run an actual old Bihon installer.
+    const databaseFiles = (await fs.readdir(stateDir)).filter(name => /^database\.(?:mv|h2)\.db$/.test(name));
+    assert.ok(databaseFiles.length, 'The closed engine did not persist its library database.');
+    const criticalFiles = [...databaseFiles, 'desktop-settings.json', 'server.conf', 'default-repository.json', 'books.json'];
+    const beforeUpgrade = Object.fromEntries(await Promise.all(criticalFiles.map(async name => [name, await digest(path.join(stateDir, name))])));
+    await writeJson(path.join(stateDir, 'upgrade-state.json'), { ...firstUpgradeState, lastSuccessfulVersion: '0.3.0' });
     await launch();
+    const upgradeState = await readJson(path.join(stateDir, 'upgrade-state.json'));
+    assert.equal(upgradeState.lastSuccessfulVersion, expectedVersion);
+    assert.equal(upgradeState.pending, undefined, 'Successful upgrade must clear the pending marker.');
+    const snapshot = upgradeState.lastUpgradeBackup;
+    assert.ok(typeof snapshot === 'string' && inside(path.join(stateDir, 'backups', 'bihon-upgrades'), snapshot), 'Upgrade snapshot must stay inside the isolated backup directory.');
+    const manifest = await readJson(path.join(snapshot, 'manifest.json'));
+    assert.equal(manifest.from, '0.3.0');
+    assert.equal(manifest.to, expectedVersion);
+    for (const file of manifest.files) {
+      const target = path.resolve(snapshot, file.name);
+      assert.ok(inside(snapshot, target), 'Upgrade manifest contains a path outside its snapshot.');
+      assert.equal(await digest(target), file.sha256, `Upgrade snapshot is corrupt: ${file.name}`);
+      assert.equal((await fs.stat(target)).size, file.size);
+    }
+    for (const [name, sha256] of Object.entries(beforeUpgrade)) {
+      assert.equal(manifest.files.find(file => file.name === name)?.sha256, sha256, `Upgrade snapshot does not match the closed original: ${name}`);
+    }
+    assert.equal(await digest(backupFile), backupHash, 'Upgrade changed an existing exported backup.');
+    assert.equal(await digest(managed), originalHash, 'Upgrade changed the managed EPUB bytes.');
+    upgradeEvidence = { fixture: 'Synthetic 0.3.0 version marker with a populated unchanged Suwayomi database', from: manifest.from, to: manifest.to, verifiedFiles: manifest.files.length, originalHashes: beforeUpgrade, exportedBackupSha256: backupHash };
+    await fs.writeFile(path.join(artifactDir, 'upgrade-snapshot.json'), JSON.stringify({ ...upgradeEvidence, manifest }, null, 2));
+    pass('synthetic 0.3.0 upgrade snapshots the closed database, settings, and EPUB index with verified hashes');
     await verifyWebview(origin, stateDir);
     assert.equal((await json(`manga/${manga.id}`)).inLibrary, true);
     const savedChapter = await json(route);
@@ -252,7 +303,26 @@ async function run() {
     await page.waitForFunction(() => document.querySelector('foliate-view')?.lastLocation?.fraction > 0.3, null, { timeout: 30000 });
     assert.equal(await digest(epub), originalHash);
     assert.deepEqual(errors, [], `Renderer exceptions: ${errors.join('; ')}`);
-    pass('restart preserves comic library/progress/pages and reopens EPUB reading progress');
+    const preservedValidation = await json('backup/validate', { method: 'POST', body: await fs.readFile(backupFile) });
+    assert.deepEqual(preservedValidation.missingSources, []);
+    assert.deepEqual(preservedValidation.missingTrackers, []);
+    pass('upgrade preserves comic library/progress/pages, EPUB reading progress, and usable existing backups');
+    await captureLogs('upgrade');
+    await close();
+
+    const snapshots = await fs.readdir(path.join(stateDir, 'backups', 'bihon-upgrades'));
+    assert.equal(snapshots.length, 1, 'The upgrade must create exactly one snapshot.');
+    const savedAfterUpgrade = (await readJson(path.join(stateDir, 'books.json'))).books[0];
+    await launch();
+    const restartState = await readJson(path.join(stateDir, 'upgrade-state.json'));
+    assert.equal(restartState.lastUpgradeBackup, snapshot);
+    assert.deepEqual(await fs.readdir(path.join(stateDir, 'backups', 'bihon-upgrades')), snapshots, 'An ordinary restart must not create another upgrade snapshot.');
+    assert.equal((await json(`manga/${manga.id}`)).inLibrary, true);
+    assert.equal((await json(route)).lastPageRead, 1);
+    assert.equal((await page.evaluate(() => window.bihon.books.list()))[0].progress.cfi, savedAfterUpgrade.progress.cfi);
+    assert.equal(await digest(backupFile), backupHash);
+    assert.deepEqual(errors, [], `Renderer exceptions: ${errors.join('; ')}`);
+    pass('ordinary post-upgrade restart preserves state and creates no duplicate snapshot');
     await captureLogs('restart');
     await close();
     pass('no renderer exceptions or surviving bundled Java process');
@@ -272,8 +342,10 @@ async function run() {
       if (app) app.process().kill('SIGKILL');
     }
     // Kill only processes recorded by the isolated app owned by this invocation.
-    const recorded = await readJson(path.join(stateDir, 'desktop-server.json'), null).catch(() => null);
-    if (Number.isSafeInteger(recorded?.pid) && recorded.pid > 0) ownedServers.add(recorded.pid);
+    if (launchPending) {
+      const recorded = await readJson(path.join(stateDir, 'desktop-server.json'), null).catch(() => null);
+      if (Number.isSafeInteger(recorded?.pid) && recorded.pid > 0) ownedServers.add(recorded.pid);
+    }
     for (const pid of ownedServers) {
       if (alive(pid)) {
         process.kill(pid, 'SIGKILL');
@@ -283,7 +355,7 @@ async function run() {
     await until(() => [...ownedServers].every(pid => !alive(pid)), 'forced cleanup of the owned Java process').catch(error => {
       failed ||= error;
     });
-    await fs.writeFile(path.join(artifactDir, 'result.json'), JSON.stringify({ platform: process.platform, executablePath, passed: !failed, checks, rendererErrors: errors, error: failed?.stack }, null, 2));
+    await fs.writeFile(path.join(artifactDir, 'result.json'), JSON.stringify({ platform: process.platform, executablePath, passed: !failed, checks, upgradeEvidence, rendererErrors: errors, error: failed?.stack }, null, 2));
     await fs.rm(fixtureRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
     if (failed) process.exitCode = 1;
   }

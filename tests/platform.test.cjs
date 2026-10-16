@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const { stateDirectory, runtimeDirectory, platformDetails, samePath, javaInvocation, serverEnvironment, updateInstructions } = require('../desktop/platform.cjs');
 const { migrate } = require('../desktop/storage.cjs');
 const { downloadVerified } = require('../scripts/runtime-tools.cjs');
+const { installWebview } = require('../scripts/prepare-webview.cjs');
 
 async function fixture(t) {
   const base = path.resolve(__dirname, '../.test-data/platform-tests');
@@ -101,4 +102,35 @@ test('download preparation verifies streamed WebView bytes and leaves no accepte
   assert.equal(await fs.readFile(file, 'utf8'), bytes);
   await assert.rejects(downloadVerified('https://example.invalid/corrupt', path.join(dir, 'corrupt'), { sha256: '0'.repeat(64) }), /Checksum mismatch/);
   assert.deepEqual(await fs.readdir(dir), ['webview.tar.gz']);
+});
+
+test('Linux WebView preparation keeps lib/jfr without colliding with bin/jfr and preserves its native helper', async t => {
+  const dir = await fixture(t), extracted = path.join(dir, 'jbr'), destination = path.join(dir, 'kcef');
+  await fs.mkdir(path.join(extracted, 'lib/jfr'), { recursive: true });
+  await fs.mkdir(path.join(extracted, 'bin'));
+  await fs.mkdir(path.join(extracted, 'legal'));
+  await fs.writeFile(path.join(extracted, 'lib/jfr/default.jfc'), 'flight recorder configuration');
+  await fs.writeFile(path.join(extracted, 'bin/jfr'), 'flight recorder executable');
+  await fs.writeFile(path.join(extracted, 'lib/libjcef.so'), 'JCEF native library');
+  await fs.writeFile(path.join(extracted, 'lib/libcef.so'), 'Chromium native library');
+  await fs.writeFile(path.join(extracted, 'lib/jcef_helper'), 'native helper', { mode: 0o755 });
+  await fs.writeFile(path.join(extracted, 'legal/NOTICE'), 'pinned runtime notices');
+  await fs.writeFile(path.join(extracted, 'release'), 'JCEF_VERSION_DETAILED=pinned');
+  await installWebview({ extracted, destination, platform: 'linux' });
+  assert.equal(await fs.readFile(path.join(destination, 'jfr/default.jfc'), 'utf8'), 'flight recorder configuration');
+  assert.equal(await fs.readFile(path.join(destination, 'jcef_helper'), 'utf8'), 'native helper');
+  assert.equal(await fs.readFile(path.join(destination, 'release'), 'utf8'), 'JCEF_VERSION_DETAILED=pinned');
+  assert.equal(await fs.readFile(path.join(destination, 'legal/NOTICE'), 'utf8'), 'pinned runtime notices');
+  if (process.platform !== 'win32') assert.equal((await fs.stat(path.join(destination, 'jcef_helper'))).mode & 0o111, 0o111);
+});
+
+test('Linux WebView preparation does not publish a release marker if its native helper is missing', async t => {
+  const dir = await fixture(t), extracted = path.join(dir, 'jbr'), destination = path.join(dir, 'kcef');
+  await fs.mkdir(path.join(extracted, 'lib'), { recursive: true });
+  await fs.mkdir(path.join(extracted, 'legal'));
+  await fs.writeFile(path.join(extracted, 'lib/libjcef.so'), 'JCEF native library');
+  await fs.writeFile(path.join(extracted, 'lib/libcef.so'), 'Chromium native library');
+  await fs.writeFile(path.join(extracted, 'release'), 'JCEF_VERSION_DETAILED=pinned');
+  await assert.rejects(installWebview({ extracted, destination, platform: 'linux' }), /ENOENT/);
+  await assert.rejects(fs.access(path.join(destination, 'release')), /ENOENT/);
 });

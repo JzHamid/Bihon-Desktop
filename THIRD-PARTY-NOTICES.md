@@ -10,7 +10,7 @@ Bihon desktop is an independent adaptation of Suwayomi WebUI, powered by an unmo
 - Extension WebView: JetBrains Runtime jbr_jcef-25.0.3-b508.4, Windows x64 or Linux x64. Exact download pins are in UPSTREAM.json. Notices are retained in runtime/kcef/legal. Corresponding OpenJDK/JBR source: https://github.com/JetBrains/JetBrainsRuntime/tree/jbr-release-25.0.3b508.4. Distributed under GPLv2 with the Classpath Exception and component licenses; see the included notices.
 - Native Android: Mihon 0.21.2, revision 9612d955db3165e1578fdf9ff19ca9b7762c4a46, Apache License 2.0. Copyright 2015 Javier Tomás and 2024 Mihon Open Source Project. Pin and patch instructions are in android/upstream.json and scripts/android-prepare.cjs. The Android source archive includes the full prepared source and its LICENSE/NOTICE files; the Apache license is also in licenses/Mihon-Apache-2.0.txt.
 
-Changes: Bihon branding, native desktop folder selection, verified download migration, Windows process ownership, EPUB/OPDS support, packaging, tests, and documentation. Existing source headers and licenses are retained. Bihon additions are MPL-2.0.
+Changes: Bihon branding, native desktop folder selection, verified download migration, process ownership, EPUB/OPDS support, packaging, tests, and documentation. Existing source headers and licenses are retained. Bihon desktop additions are MPL-2.0; the native Android adaptation retains Apache-2.0.
 
 Distribute Bihon-0.4.0-source.zip alongside the Windows/Linux installers and Bihon-Android-0.4.0-source.tar.gz alongside the Android APK. The desktop archive includes the corresponding modified MPL-covered source and build instructions. Recipients may exercise the rights granted by those licenses.
 

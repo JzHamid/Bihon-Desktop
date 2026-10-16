@@ -183,7 +183,17 @@ async function boot() {
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => { if (window) { if (window.isMinimized()) window.restore(); window.focus(); } });
-  app.whenReady().then(boot).catch(async error => { await showError(error); app.quit(); });
+  app.whenReady().then(async () => {
+    // Some AppImage launchers add this switch when user namespaces are blocked.
+    // Refuse that automatic fallback before loading any reader/source content.
+    const smokeOptOut = ['true', '1'].includes(process.env.CI) && process.env.BIHON_SMOKE_NO_SANDBOX === '1';
+    if (app.isPackaged && process.platform === 'linux' && app.commandLine.hasSwitch('no-sandbox') && !smokeOptOut) {
+      dialog.showErrorBox('Install the Bihon Debian package', 'This AppImage launcher could not enable Chromium sandboxing. Install the .deb package, or use a desktop that allows unprivileged user namespaces.');
+      app.exit(1);
+      return;
+    }
+    await boot();
+  }).catch(async error => { await showError(error); app.quit(); });
   app.on('window-all-closed', () => app.quit());
   app.on('before-quit', event => {
     if (quitting) return;

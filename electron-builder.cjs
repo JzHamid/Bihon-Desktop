@@ -36,6 +36,8 @@ module.exports = {
     synopsis: 'Local manga, webtoon, and EPUB reader',
     desktop: { entry: { Name: 'Bihon', Comment: 'Read manga, webtoons, and EPUB books', StartupWMClass: 'Bihon' } },
   },
+  // Override electron-builder's legacy AppImage default of --no-sandbox.
+  appImage: { executableArgs: [] },
   deb: {
     // Electron and JCEF both need these desktop libraries. Ubuntu 24.04's
     // t64 packages provide the corresponding unversioned dependency names.

@@ -14,7 +14,7 @@ Version 0.4.0 is a release candidate until the checks in [VERIFICATION.md](VERIF
 
 **Windows:** close the existing app, run the newer installer over it, then open Bihon. Java is included. The installer is unsigned.
 
-**Linux:** install the `.deb` with `sudo apt install ./Bihon-0.4.0-x64.deb`, or mark the AppImage executable and open it. AppImage needs FUSE 2 support; if unavailable, run `./Bihon-0.4.0-x64.AppImage --appimage-extract-and-run`. Use a graphical desktop with X11 or Xwayland (`DISPLAY` must be set for extension WebViews). The Debian package declares the desktop libraries it needs. ARM Linux is not supported by this release.
+**Linux:** install the `.deb` with `sudo apt install ./Bihon-0.4.0-x64.deb`, or mark the AppImage executable and open it. AppImage needs FUSE 2 support; if unavailable, run `./Bihon-0.4.0-x64.AppImage --appimage-extract-and-run`. Use a graphical desktop with X11 or Xwayland (`DISPLAY` must be set for extension WebViews). On systems that restrict unprivileged user namespaces, use the Debian package so its installed sandbox helper and AppArmor integration can operate. The Debian package declares the desktop libraries it needs. ARM Linux is not supported by this release.
 
 **Android:** install the production APK and allow your browser/file manager to install it when Android asks. Bihon installs alongside Mihon. Existing Mihon data is not overwritten; export a backup in Mihon and restore it in Bihon, keeping your original. See [Android details](docs/android.md) for capabilities and build instructions.
 

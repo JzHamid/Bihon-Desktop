@@ -5,7 +5,9 @@ const path = require('node:path');
 const os = require('node:os');
 const { migrate, readJson } = require('../desktop/storage.cjs');
 async function fixture(t) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'bihon-test-'));
+  // Windows runner TEMP can use an 8.3 user alias. Migration deliberately
+  // commits real paths, so compare against the fixture's canonical path.
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'bihon-test-')));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const source = path.join(root, 'old 漫画'), destination = path.join(root, 'new folder'), stateDir = path.join(root, 'state');
   await fs.mkdir(path.join(source, 'mangas', 'Series'), { recursive: true });
