@@ -1,6 +1,7 @@
+const { runtimeDirectory } = require('../desktop/platform.cjs');
 const fs=require('node:fs/promises');const path=require('node:path');const {Server}=require('../desktop/server.cjs');const root=path.resolve(__dirname,'..');
 function fields(b){let p=0;const out=[];function int(){let n=0,shift=0,x;do{x=b[p++];n+=(x&127)*2**shift;shift+=7}while(x&128);return n}while(p<b.length){const tag=int(),wire=tag&7,id=tag>>>3;if(wire===2){const n=int();out.push([id,b.subarray(p,p+n)]);p+=n}else if(wire===0){out.push([id,int()])}else if(wire===1)p+=8;else if(wire===5)p+=4;else throw Error('Unknown protobuf wire '+wire)}return out}
-const server=new Server({stateDir:path.join(root,'.test-data/engine'),runtime:path.join(root,'runtime/Suwayomi-Server-v2.3.2243-windows-x64'),ui:path.join(root,'vendor/webui/build'),wrapper:path.join(root,'desktop/java')});
+const server=new Server({stateDir:path.join(root,'.test-data/engine'),runtime:runtimeDirectory(root),ui:path.join(root,'vendor/webui/build'),wrapper:path.join(root,'desktop/java')});
 async function run(){
  const response=await fetch('https://github.com/keiyoushi/extensions/raw/repo/index.pb');if(!response.ok)throw Error(response.status);
  let data=Buffer.from(await response.arrayBuffer());if(data[0]===31&&data[1]===139)data=require('node:zlib').gunzipSync(data);

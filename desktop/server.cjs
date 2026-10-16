@@ -5,6 +5,7 @@ const net = require('node:net');
 const { spawn } = require('node:child_process');
 const { once } = require('node:events');
 const { writeJson } = require('./storage.cjs');
+const { javaInvocation, serverEnvironment } = require('./platform.cjs');
 
 async function freePort() {
   const socket = net.createServer();
@@ -41,14 +42,9 @@ class Server {
     };
     const tempDir = path.join(this.stateDir, 'temp');
     await fs.mkdir(tempDir, { recursive: true });
-    const args = [
-      `-Djava.io.tmpdir=${tempDir}`,
-      '-Xmx1024m', `-Dsuwayomi.tachidesk.config.server.rootDir=${this.stateDir}`,
-      ...Object.entries(enforced).map(([key, value]) => `-Dsuwayomi.tachidesk.config.server.${key}=${JSON.stringify(value)}`),
-      '-cp', `${this.wrapper}${path.delimiter}${path.join(this.runtime, 'bin', 'Suwayomi-Server.jar')}`, 'BihonServer',
-    ];
+    const { executable, args } = javaInvocation({ runtime: this.runtime, wrapper: this.wrapper, stateDir: this.stateDir, tempDir, enforced });
     const log = createWriteStream(path.join(this.stateDir, 'desktop-server.log'), { flags: 'w' });
-    this.child = spawn(path.join(this.runtime, 'jre', 'bin', 'java.exe'), args, { cwd: this.runtime, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    this.child = spawn(executable, args, { cwd: this.runtime, env: serverEnvironment({ runtime: this.runtime }), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     const child = this.child;
     child.stdout.pipe(log); child.stderr.pipe(log);
     let failure;

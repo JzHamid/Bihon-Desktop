@@ -6,6 +6,6 @@ const version = require('../package.json').version;
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 const status = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8', windowsHide: true });
 if (status.status !== 0 || status.stdout.trim()) throw new Error('Commit all source changes before creating the corresponding source archive.');
-const result = spawnSync('git', ['archive', '--format=zip', `--prefix=Bihon-${version}/`, `--output=dist/Bihon-${version}-source.zip`, 'HEAD'], { cwd: root, stdio: 'inherit', windowsHide: true });
+const result = spawnSync('git', ['-c', 'core.autocrlf=false', 'archive', '--format=zip', `--prefix=Bihon-${version}/`, `--output=dist/Bihon-${version}-source.zip`, 'HEAD'], { cwd: root, stdio: 'inherit', windowsHide: true });
 if (result.status !== 0) process.exit(result.status || 1);
 console.log(`Created dist/Bihon-${version}-source.zip from the committed source.`);

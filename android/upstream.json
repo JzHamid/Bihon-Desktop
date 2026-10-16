@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/mihonapp/mihon",
+  "tag": "v0.21.2",
+  "revision": "9612d955db3165e1578fdf9ff19ca9b7762c4a46",
+  "archive": "https://codeload.github.com/mihonapp/mihon/tar.gz/9612d955db3165e1578fdf9ff19ca9b7762c4a46",
+  "sha256": "7d50fe76751248c0cebf191d3746801fe3b0ac06097b284096fe896ccadfa817",
+  "commitTime": "2026-10-12T19:52:15Z",
+  "license": "Apache-2.0",
+  "applicationId": "app.bihon.android",
+  "name": "Bihon",
+  "java": "21",
+  "minimumAndroidApi": 26,
+  "compileAndroidApi": "37.2",
+  "targetAndroidApi": 36,
+  "ndk": "29.0.14206865",
+  "disabledTrackers": ["anilist", "bangumi", "comick", "hikka", "kitsu", "mangabaka", "myanimelist", "shikimori"]
+}

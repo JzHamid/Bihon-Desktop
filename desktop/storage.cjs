@@ -2,6 +2,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { createReadStream } = require('node:fs');
+const { samePath } = require('./platform.cjs');
 
 async function readJson(file, fallback) {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); }
@@ -59,7 +60,7 @@ async function migrate({ stateDir, source, destination, commit, progress = () =>
   let journal = await readJson(journalFile, null);
   if (!journal) {
     source = path.resolve(source); destination = path.resolve(destination);
-    if (source.toLowerCase() === destination.toLowerCase()) return;
+    if (samePath(source, destination)) return;
     await fs.mkdir(source, { recursive: true });
     await fs.mkdir(destination, { recursive: true });
     await assertNoLinks(source); await assertNoLinks(destination);

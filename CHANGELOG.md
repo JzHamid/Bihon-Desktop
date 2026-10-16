@@ -1,5 +1,13 @@
 ﻿# Changelog
 
+## 0.4.0 (release candidate)
+
+- Add Linux x64 AppImage and Debian packages with a bundled JVM and extension WebView, verified platform downloads, Linux data paths, native process startup/shutdown, and case-sensitive folder migration.
+- Preserve the Windows installation identity, library/download locations, verified upgrade snapshots, EPUB reader, and manual-update flow.
+- Add a native Android 8+ Bihon app built from pinned Mihon 0.21.2 source. It includes upstream reader, download, database migration, back-gesture, and Cloudflare memory fixes. It installs separately from Mihon and the existing Android fork.
+- Disable upstream telemetry, Mihon's APK updater, and shared third-party OAuth registrations in the independent Android app. Self-hosted trackers and MangaUpdates remain available. Desktop EPUB/OPDS features and automatic cross-device sync are not included on Android.
+- Add Windows/Linux packaged-app functional checks, Android unit/database migration checks and API 26/35 emulator startup checks, corresponding source artifacts, and release checksums. See VERIFICATION.md for actual execution results; configured checks alone are not a passing test report.
+
 ## 0.3.0
 
 - Refresh Bihon branding across the Windows executable/installer, taskbar, startup page, WebUI icons, splash, sidebar, and About screen.

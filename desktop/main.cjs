@@ -8,10 +8,11 @@ const { readJson, writeJson, migrate, inside } = require('./storage.cjs');
 const { configureDefaultRepository } = require('./defaults.cjs');
 const { prepareUpgrade, markVersionStarted } = require('./upgrades.cjs');
 const { BookService, parseByteRange } = require('./books.cjs');
+const { stateDirectory, runtimeDirectory, samePath, updateInstructions } = require('./platform.cjs');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'bihon-book', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } }]);
 
-const stateDir = process.env.BIHON_DATA_DIR || path.join(process.env.LOCALAPPDATA, 'Bihon');
+const stateDir = stateDirectory();
 app.setPath('userData', path.join(stateDir, 'desktop'));
 app.setName('Bihon');
 let window, server, settings, books, defaultRetry, busy = false, quitting = false;
@@ -40,7 +41,7 @@ async function setupExtensions() {
 }
 const settingsFile = path.join(stateDir, 'desktop-settings.json');
 const root = path.resolve(__dirname, '..');
-const runtime = app.isPackaged ? path.join(process.resourcesPath, 'runtime') : path.join(root, 'runtime/Suwayomi-Server-v2.3.2243-windows-x64');
+const runtime = app.isPackaged ? path.join(process.resourcesPath, 'runtime') : runtimeDirectory(root);
 const ui = app.isPackaged ? path.join(process.resourcesPath, 'webui') : path.join(root, 'vendor/webui/build');
 const wrapper = app.isPackaged ? path.join(process.resourcesPath, 'java') : path.join(__dirname, 'java');
 function sendProgress(message) { if (window && !window.isDestroyed()) window.webContents.send('bihon:progress', message); }
@@ -59,7 +60,7 @@ async function chooseDownloads() {
   const selected = await dialog.showOpenDialog(window, { title: 'Choose an empty folder for Bihon downloads', defaultPath: settings.downloadsPath, properties: ['openDirectory', 'createDirectory'] });
   if (selected.canceled) return { canceled: true };
   const destination = path.resolve(selected.filePaths[0]);
-  if (destination.toLowerCase() === settings.downloadsPath.toLowerCase()) return { canceled: true };
+  if (samePath(destination, settings.downloadsPath)) return { canceled: true };
   if (inside(stateDir, destination) || inside(destination, stateDir) || destination === stateDir) throw new Error('Choose a download folder separate from Bihon application data.');
     await server.pause();
     await server.stop();
@@ -145,7 +146,7 @@ async function boot() {
     ] },
     { role: 'editMenu' },
     { label: 'View', submenu: [{ role: 'reload' }, { label: 'Reset zoom', accelerator: 'CmdOrCtrl+0', click: () => changeZoom('reset') }, { label: 'Zoom in', accelerator: 'CmdOrCtrl+Plus', click: () => changeZoom('in') }, { label: 'Zoom out', accelerator: 'CmdOrCtrl+-', click: () => changeZoom('out') }, { role: 'togglefullscreen', accelerator: 'F11' }] },
-    { label: 'Help', submenu: [{ label: 'Updating Bihon...', click: () => dialog.showMessageBox(window, { title: 'Update Bihon', message: 'Close Bihon and run the newer Bihon Setup installer.', detail: 'Install over the existing version. Your library, reading progress, extensions, and download folder are kept. Bihon saves a verified library backup before opening data with a newer version. You do not need to uninstall or add the extension repository again.' }) }, { label: 'Open upgrade backups', click: async () => { const dir = path.join(stateDir, 'backups/bihon-upgrades'); await fs.mkdir(dir, { recursive: true }); await shell.openPath(dir); } }, { label: 'Open application data', click: () => shell.openPath(stateDir) }, { label: 'About Bihon', click: () => dialog.showMessageBox(window, { title: 'Bihon', message: `Bihon ${version}`, detail: 'Local Windows manga reader\nPowered by Suwayomi Server 2.3.2243 and WebUI v20260726.01.\nMPL-2.0. Updates are installed manually.\nBackups contain library data; chapter downloads are separate.' }) }] },
+    { label: 'Help', submenu: [{ label: 'Updating Bihon...', click: () => dialog.showMessageBox(window, { title: 'Update Bihon', message: updateInstructions(), detail: 'Install over the existing version. Your library, reading progress, extensions, and download folder are kept. Bihon saves a verified library backup before opening data with a newer version. You do not need to uninstall or add the extension repository again.' }) }, { label: 'Open upgrade backups', click: async () => { const dir = path.join(stateDir, 'backups/bihon-upgrades'); await fs.mkdir(dir, { recursive: true }); await shell.openPath(dir); } }, { label: 'Open application data', click: () => shell.openPath(stateDir) }, { label: 'About Bihon', click: () => dialog.showMessageBox(window, { title: 'Bihon', message: `Bihon ${version}`, detail: 'Local manga, webtoon, and EPUB reader\nPowered by Suwayomi Server 2.3.2243 and WebUI v20260726.01.\nMPL-2.0. Updates are installed manually.\nBackups contain library data; chapter downloads are separate.' }) }] },
   ]));
   server = new Server({ stateDir, runtime, ui, wrapper });
   handle('bihon:setup-info', async () => ({ defaultRepositoryReady: !!(await readJson(path.join(stateDir, 'default-repository.json'), null))?.configured }));

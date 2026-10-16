@@ -11,3 +11,10 @@ vendor/**/.env
 vendor/**/.gradle/
 *.log
 desktop/java/*.class
+.build/
+*.keystore
+*.jks
+release-keys/
+.env
+.env.*
+!.env.example
