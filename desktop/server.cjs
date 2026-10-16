@@ -5,6 +5,7 @@ const net = require('node:net');
 const { spawn } = require('node:child_process');
 const { once } = require('node:events');
 const { writeJson } = require('./storage.cjs');
+const { javaInvocation, serverEnvironment } = require('./platform.cjs');
 
 async function freePort() {
   const socket = net.createServer();
@@ -41,19 +42,41 @@ class Server {
     };
     const tempDir = path.join(this.stateDir, 'temp');
     await fs.mkdir(tempDir, { recursive: true });
-    const args = [
-      `-Djava.io.tmpdir=${tempDir}`,
-      '-Xmx1024m', `-Dsuwayomi.tachidesk.config.server.rootDir=${this.stateDir}`,
-      ...Object.entries(enforced).map(([key, value]) => `-Dsuwayomi.tachidesk.config.server.${key}=${JSON.stringify(value)}`),
-      '-cp', `${this.wrapper}${path.delimiter}${path.join(this.runtime, 'bin', 'Suwayomi-Server.jar')}`, 'BihonServer',
-    ];
+    const { executable, args } = javaInvocation({ runtime: this.runtime, wrapper: this.wrapper, stateDir: this.stateDir, tempDir, enforced });
     const log = createWriteStream(path.join(this.stateDir, 'desktop-server.log'), { flags: 'w' });
-    this.child = spawn(path.join(this.runtime, 'jre', 'bin', 'java.exe'), args, { cwd: this.runtime, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-    const child = this.child;
-    child.stdout.pipe(log); child.stderr.pipe(log);
     let failure;
-    child.on('error', error => { failure = error; });
-    child.on('exit', (code) => { this.child = null; log.end(); failure = new Error(`Local server exited (${code}). See desktop-server.log.`); });
+    const logClosed = new Promise(resolve => log.once('close', resolve));
+    log.on('error', error => { failure ||= error; });
+    // Surface access errors before starting a JVM that could outlive startup.
+    await once(log, 'open');
+    const endLog = () => { if (!log.writableEnded) log.end(); };
+    let child;
+    try {
+      child = spawn(executable, args, { cwd: this.runtime, env: serverEnvironment({ runtime: this.runtime }), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    } catch (error) {
+      endLog(); await logClosed; throw error;
+    }
+    this.child = child;
+    // stdout and stderr close independently. Keep the log open until both have
+    // drained, including native-loader diagnostics written just before exit.
+    child.stdout.pipe(log, { end: false }); child.stderr.pipe(log, { end: false });
+    child.once('error', error => {
+      failure = error;
+      if (this.child === child) this.child = null;
+      endLog();
+    });
+    child.once('exit', (code, signal) => {
+      if (this.child === child) this.child = null;
+      failure ||= new Error(`Local server exited (${signal || code}). See desktop-server.log.`);
+    });
+    this.closed = new Promise(resolve => child.once('close', () => {
+      endLog();
+      logClosed.then(resolve);
+    }));
+    // A missing/nonexecutable Java binary emits error + close, never exit. Do
+    // not retain it as a running child or make stop() wait for an impossible exit.
+    try { await once(child, 'spawn'); }
+    catch (error) { await logClosed; throw error; }
     await writeJson(path.join(this.stateDir, 'desktop-server.json'), { pid: child.pid, port: this.port });
     const deadline = Date.now() + 120000;
     while (Date.now() < deadline) {
@@ -78,12 +101,11 @@ class Server {
   }
   async stop() {
     const child = this.child;
-    if (!child) return;
-    const exited = once(child, 'exit');
-    child.stdin.end('shutdown\n');
+    if (!this.closed) return;
+    if (child) child.stdin.end('shutdown\n');
     let timer;
     try {
-      await Promise.race([exited, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Server is still closing. Originals have not been moved.')), 30000); })]);
+      await Promise.race([this.closed, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Server is still closing. Originals have not been moved.')), 30000); })]);
     } finally { clearTimeout(timer); }
   }
 }

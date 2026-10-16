@@ -1,3 +1,4 @@
+const { runtimeDirectory } = require('../desktop/platform.cjs');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const assert = require('node:assert/strict');
@@ -5,7 +6,7 @@ const { Server } = require('../desktop/server.cjs');
 const root = path.resolve(__dirname, '..');
 const stateDir = path.join(root, '.test-data/library');
 const settings = { downloadsPath: path.join(root, '.test-data/library-downloads') };
-const server = new Server({ stateDir, runtime: path.join(root, 'runtime/Suwayomi-Server-v2.3.2243-windows-x64'), ui: path.join(root, 'vendor/webui/build'), wrapper: path.join(root, 'desktop/java') });
+const server = new Server({ stateDir, runtime: runtimeDirectory(root), ui: path.join(root, 'vendor/webui/build'), wrapper: path.join(root, 'desktop/java') });
 async function request(route, options = {}) {
   const r = await fetch(server.url + '/api/v1/' + route, { ...options, signal: AbortSignal.timeout(60000) });
   if (!r.ok) throw Error(`${route}: ${r.status} ${(await r.text()).slice(0,200)}`);

@@ -21,7 +21,7 @@ async function run() {
     await page.waitForURL('http://127.0.0.1:*/**', { timeout: 120000 });
     await page.getByRole('link', { name: 'Library', exact: true }).waitFor({ timeout: 60000 });
     console.log('Library UI loaded:', page.url());
-    try { console.log(execFileSync(path.join(root, 'node_modules/node/bin/node.exe'), [path.join(root, 'node_modules/agent-browser/bin/agent-browser.js'), '--session', 'bihon-smoke', '--cdp', '9223', 'snapshot', '-i'], { timeout: 15000, encoding: 'utf8', windowsHide: true })); }
+    try { console.log(execFileSync(require('./toolchain.cjs').node, [path.join(root, 'node_modules/agent-browser/bin/agent-browser.js'), '--session', 'bihon-smoke', '--cdp', '9223', 'snapshot', '-i'], { timeout: 15000, encoding: 'utf8', windowsHide: true })); }
     catch (e) { console.log('agent-browser snapshot unavailable:', e.message.slice(0,160)); }
     const base = new URL(page.url()).origin;
     await page.goto(`${base}/settings/download`);

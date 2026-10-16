@@ -1,9 +1,10 @@
+const { runtimeDirectory } = require('../desktop/platform.cjs');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const { Server } = require('../desktop/server.cjs');
 const root = path.resolve(__dirname, '..');
 const stateDir = path.join(root, '.test-data/engine');
-const server = new Server({ stateDir, runtime: path.join(root, 'runtime/Suwayomi-Server-v2.3.2243-windows-x64'), ui: path.join(root, 'vendor/webui/build'), wrapper: path.join(root, 'desktop/java') });
+const server = new Server({ stateDir, runtime: runtimeDirectory(root), ui: path.join(root, 'vendor/webui/build'), wrapper: path.join(root, 'desktop/java') });
 async function api(route, options) {
   const response = await fetch(server.url + route, { ...options, signal: AbortSignal.timeout(120000) });
   if (!response.ok) throw new Error(`${route}: ${response.status} ${(await response.text()).slice(0,300)}`);

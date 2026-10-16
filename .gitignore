@@ -1,9 +1,9 @@
-node_modules/
-runtime/
-downloads/
-dist/
-artifacts/
-.test-data/
+/node_modules/
+/runtime/
+/downloads/
+/dist/
+/artifacts/
+/.test-data/
 vendor/**/node_modules/
 vendor/**/.git/
 vendor/**/build/
@@ -11,3 +11,11 @@ vendor/**/.env
 vendor/**/.gradle/
 *.log
 desktop/java/*.class
+/.build/
+*.keystore
+*.jks
+*.p12
+/release-keys/
+.env
+.env.*
+!.env.example
